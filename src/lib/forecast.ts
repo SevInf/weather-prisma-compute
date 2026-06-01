@@ -193,9 +193,13 @@ export async function fetchForecasts(
       "cloud_cover_high",
     ].join(","),
   );
-  url.searchParams.set("models", "icon_d2");
-  // ICON-D2 covers 48 hours, which is plenty to reach tomorrow's sunrise
-  // even when the user opens the page late in the evening.
+  // DWD ICON seamless: per-location best of (D2 → EU → global) so we keep
+  // 2 km resolution over Central Europe while still covering POIs elsewhere
+  // (a single icon_d2 request fails with HTTP 400 if any location is outside
+  // the D2 area).
+  url.searchParams.set("models", "icon_seamless");
+  // Two days is enough to reach tomorrow's sunrise even when the user opens
+  // the page late in the evening.
   url.searchParams.set("forecast_days", "2");
   url.searchParams.set("timezone", "UTC");
 

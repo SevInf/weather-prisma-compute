@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
-import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
+import type { MapLayerMouseEvent, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 // OpenFreeMap (https://openfreemap.org) hosts a public MapLibre style backed
@@ -245,9 +245,25 @@ const SUN_COLUMNS: SunColumn[] = [
 
 export function MapView() {
   const [pois, setPois] = useState<Poi[]>([]);
+  const [loading, setLoading] = useState(true);
   // The first POI drives the per-column day label; all POIs in the same
   // region share a day for each event.
   const firstPoi = pois[0];
+  // Imperative handle on the MapLibre map, used to fly to a POI when the
+  // user clicks its row in the table.
+  const mapRef = useRef<MapRef>(null);
+
+  const flyToPoi = useCallback((p: Poi) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [p.longitude, p.latitude],
+      // Bump zoom if the user is currently zoomed out, but never zoom out.
+      zoom: Math.max(map.getZoom(), 11),
+      duration: 800,
+      essential: true,
+    });
+  }, []);
 
   // Sort the sun columns chronologically by each column's reference time on
   // the first POI. Columns whose timestamp is missing/null sink to the end so
@@ -277,12 +293,15 @@ export function MapView() {
   }, [selectedId]);
 
   const refreshPois = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/pois");
       if (!res.ok) throw new Error(`GET /api/pois -> ${res.status}`);
       setPois((await res.json()) as Poi[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -370,6 +389,7 @@ export function MapView() {
     <div className="layout">
       <div className="map-pane">
         <MapGL
+          ref={mapRef}
           initialViewState={{
             longitude: 13.405,
             latitude: 52.52,
@@ -425,7 +445,8 @@ export function MapView() {
 
       <div className="table-pane">
         <div className="table-header">
-          <h2>POIs</h2>
+          <h2>Places</h2>
+          {loading && <span className="spinner" aria-label="Loading" />}
           <small>
             {pois.length} saved
             {draft ? " + 1 draft" : ""} · click the map to add one
@@ -496,9 +517,16 @@ export function MapView() {
                   else rowRefs.current.delete(p.id);
                 }}
                 className={selectedId === p.id ? "selected" : undefined}
-                onClick={() =>
-                  setSelectedId((cur) => (cur === p.id ? null : p.id))
-                }
+                onClick={() => {
+                  // Toggle selection; when we *select* a POI (not deselect),
+                  // pan the map so the user can find it visually.
+                  if (selectedId === p.id) {
+                    setSelectedId(null);
+                  } else {
+                    setSelectedId(p.id);
+                    flyToPoi(p);
+                  }
+                }}
               >
                 <td>{p.name}</td>
                 {sortedSunColumns.map((c) => (
@@ -532,7 +560,9 @@ export function MapView() {
                   colSpan={2 + sortedSunColumns.length}
                   style={{ textAlign: "center", color: "#888", padding: 20 }}
                 >
-                  No POIs yet. Click the map to add one.
+                  {loading
+                    ? "Loading places…"
+                    : "No places yet. Click the map to add one."}
                 </td>
               </tr>
             )}
