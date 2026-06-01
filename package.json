@@ -3,25 +3,32 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
-  "workspaces": [
-    "frontend"
-  ],
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "dev:frontend": "bun run --filter weather-app-frontend dev",
+    "dev:frontend": "bun build frontend/index.html --outdir frontend/dist --target browser --watch",
     "start": "bun run src/index.ts",
-    "build": "bun run --filter weather-app-frontend build",
+    "build": "bun build frontend/index.html --outdir frontend/dist --target browser --minify",
+    "typecheck": "tsc --noEmit -p frontend/tsconfig.json",
     "extract-tiles": "pmtiles extract https://build.protomaps.com/20260601.pmtiles data/germany.pmtiles --bbox=11.265,51.359,14.766,53.559 --maxzoom=11 --download-threads=8",
     "contract:emit": "prisma-next contract emit"
   },
   "dependencies": {
     "@prisma-next/postgres": "^0.11.0",
+    "@protomaps/basemaps": "^5.7.2",
     "dotenv": "^17.4.2",
-    "hono": "^4.6.14"
+    "hono": "^4.6.14",
+    "maplibre-gl": "^5.24.0",
+    "pmtiles": "^4.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-map-gl": "^8.1.1"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^25.9.1",
-    "prisma-next": "^0.11.0"
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "prisma-next": "^0.11.0",
+    "typescript": "^5.6.3"
   }
 }
