@@ -5,7 +5,7 @@ bun.lockb
 *.log
 .DS_Store
 data/*.pmtiles
-frontend/dist/
-dist/
+.next/
+next-env.d.ts
 *.tsbuildinfo
 .env

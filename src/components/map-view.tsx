@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
@@ -21,7 +23,7 @@ type Draft = {
 };
 
 // Register the `pmtiles://` protocol with MapLibre so it can read tiles from
-// our Range-supporting Hono endpoint on demand.
+// our Range-supporting Next.js route handler on demand.
 function usePmtilesProtocol() {
   useEffect(() => {
     const protocol = new Protocol();
@@ -31,8 +33,6 @@ function usePmtilesProtocol() {
     };
   }, []);
 }
-
-const TILES_URL = `${window.location.origin}/tiles/germany.pmtiles`;
 
 function useGermanyStyle(): StyleSpecification {
   return useMemo(
@@ -44,7 +44,8 @@ function useGermanyStyle(): StyleSpecification {
       sources: {
         protomaps: {
           type: "vector",
-          url: `pmtiles://${TILES_URL}`,
+          // Relative URL: works for SSR (window-less) and CSR alike.
+          url: `pmtiles:///tiles/germany.pmtiles`,
           attribution:
             '<a href="https://protomaps.com">Protomaps</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
         },
@@ -55,7 +56,7 @@ function useGermanyStyle(): StyleSpecification {
   );
 }
 
-export function App() {
+export function MapView() {
   usePmtilesProtocol();
   const style = useGermanyStyle();
 
@@ -138,7 +139,6 @@ export function App() {
           onError={(e) => setError(e.error?.message ?? "Unknown map error")}
         >
           <NavigationControl position="top-right" />
-          {/* Saved POIs */}
           {pois.map((p) => (
             <Marker
               key={p.id}
@@ -149,7 +149,6 @@ export function App() {
               <div className="pin pin--saved" title={p.name} />
             </Marker>
           ))}
-          {/* Draft POI */}
           {draft && (
             <Marker
               longitude={draft.longitude}
