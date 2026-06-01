@@ -4,7 +4,7 @@ node_modules/
 bun.lockb
 *.log
 .DS_Store
-data/*.pmtiles
+
 .next/
 next-env.d.ts
 *.tsbuildinfo

@@ -9,11 +9,13 @@ import {
 } from "react";
 import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
-import { Protocol } from "pmtiles";
-import { layers, namedFlavor } from "@protomaps/basemaps";
-import type { StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+
+// OpenFreeMap (https://openfreemap.org) hosts a public MapLibre style backed
+// by OpenMapTiles data from OpenStreetMap. No API key, no usage limits, and
+// attribution is auto-rendered by MapLibre. Other ready-made styles: positron,
+// bright, dark, fiord, 3d.
+const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 type Poi = {
   id: number;
@@ -135,40 +137,6 @@ function BeautyBadge({ forecast }: { forecast: BeautyForecast }) {
   );
 }
 
-// Register the `pmtiles://` protocol with MapLibre so it can read tiles from
-// our Range-supporting Next.js route handler on demand.
-function usePmtilesProtocol() {
-  useEffect(() => {
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
-    return () => {
-      maplibregl.removeProtocol("pmtiles");
-    };
-  }, []);
-}
-
-function useGermanyStyle(): StyleSpecification {
-  return useMemo(
-    () => ({
-      version: 8,
-      glyphs:
-        "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-      sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
-      sources: {
-        protomaps: {
-          type: "vector",
-          // Relative URL: works for SSR (window-less) and CSR alike.
-          url: `pmtiles:///tiles/germany.pmtiles`,
-          attribution:
-            '<a href="https://protomaps.com">Protomaps</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        },
-      },
-      layers: layers("protomaps", namedFlavor("light"), { lang: "en" }),
-    }),
-    [],
-  );
-}
-
 type SunColumn = {
   id: string;
   icon: string;
@@ -276,9 +244,6 @@ const SUN_COLUMNS: SunColumn[] = [
 ];
 
 export function MapView() {
-  usePmtilesProtocol();
-  const style = useGermanyStyle();
-
   const [pois, setPois] = useState<Poi[]>([]);
   // The first POI drives the per-column day label; all POIs in the same
   // region share a day for each event.
@@ -412,7 +377,7 @@ export function MapView() {
           }}
           minZoom={0}
           maxZoom={18}
-          mapStyle={style}
+          mapStyle={MAP_STYLE_URL}
           onClick={onMapClick}
           onError={(e) => setError(e.error?.message ?? "Unknown map error")}
         >
