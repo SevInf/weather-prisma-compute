@@ -136,6 +136,34 @@ body {
   color: #991b1b;
 }
 
+.poi-table .sun-icon {
+  font-size: 14px;
+}
+
+.poi-table .sun-cell {
+  line-height: 1.25;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.poi-table .sun-time {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.poi-table .sun-sub {
+  font-size: 11px;
+  color: #b45309;
+}
+
+.poi-table tr.selected .sun-time {
+  color: #1e3a8a;
+}
+
+.poi-table tr.selected .sun-sub {
+  color: #92400e;
+}
+
 /* Markers */
 .pin {
   width: 14px;

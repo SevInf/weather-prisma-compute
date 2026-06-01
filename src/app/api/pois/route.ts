@@ -1,5 +1,30 @@
 import { NextResponse } from "next/server";
+import SunCalc from "suncalc";
 import { db } from "@/prisma/db";
+
+function iso(date: Date): string | null {
+  // SunCalc returns `Invalid Date` for extreme latitudes during polar
+  // day/night. Surface that as `null` so the client can render a dash.
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function sunTimesFor(latitude: number, longitude: number, now: Date) {
+  const t = SunCalc.getTimes(now, latitude, longitude);
+  return {
+    sunrise: iso(t.sunrise),
+    sunset: iso(t.sunset),
+    // Morning: sun rises and climbs to ~6° above the horizon.
+    morningGoldenHour: {
+      start: iso(t.sunrise),
+      end: iso(t.goldenHourEnd),
+    },
+    // Evening: sun drops from ~6° down to the horizon.
+    eveningGoldenHour: {
+      start: iso(t.goldenHour),
+      end: iso(t.sunset),
+    },
+  };
+}
 
 // Pois are mutable per-request; never prerender or cache this endpoint.
 export const dynamic = "force-dynamic";
@@ -9,7 +34,13 @@ export async function GET() {
     .select("id", "name", "latitude", "longitude")
     .orderBy((p) => p.id.desc())
     .all();
-  return NextResponse.json(pois);
+  const now = new Date();
+  return NextResponse.json(
+    pois.map((p) => ({
+      ...p,
+      sun: sunTimesFor(p.latitude, p.longitude, now),
+    })),
+  );
 }
 
 export async function POST(req: Request) {

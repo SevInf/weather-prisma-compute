@@ -20,6 +20,12 @@ type Poi = {
   name: string;
   latitude: number;
   longitude: number;
+  sun: {
+    sunrise: string | null;
+    sunset: string | null;
+    morningGoldenHour: { start: string | null; end: string | null };
+    eveningGoldenHour: { start: string | null; end: string | null };
+  };
 };
 
 type Draft = {
@@ -27,6 +33,22 @@ type Draft = {
   latitude: number;
   longitude: number;
 };
+
+// Format an ISO timestamp as `HH:MM` in the browser's local timezone. Returns
+// an em-dash when the server reports no value (e.g. polar day/night).
+function fmtTime(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtRange(
+  start: string | null,
+  end: string | null,
+): string {
+  return `${fmtTime(start)} – ${fmtTime(end)}`;
+}
 
 // Register the `pmtiles://` protocol with MapLibre so it can read tiles from
 // our Range-supporting Next.js route handler on demand.
@@ -242,9 +264,21 @@ export function MapView() {
             <tr>
               <th style={{ width: 70 }}>ID</th>
               <th>Name</th>
-              <th style={{ width: 110 }}>Latitude</th>
-              <th style={{ width: 110 }}>Longitude</th>
-              <th style={{ width: 220 }}>Actions</th>
+              <th style={{ width: 90 }}>Latitude</th>
+              <th style={{ width: 90 }}>Longitude</th>
+              <th style={{ width: 150 }} title="Sunrise and morning golden hour">
+                <span className="sun-icon" aria-hidden>
+                  🌅
+                </span>{" "}
+                Sunrise
+              </th>
+              <th style={{ width: 150 }} title="Sunset and evening golden hour">
+                <span className="sun-icon" aria-hidden>
+                  🌇
+                </span>{" "}
+                Sunset
+              </th>
+              <th style={{ width: 110 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -268,6 +302,8 @@ export function MapView() {
                 </td>
                 <td>{draft.latitude.toFixed(5)}</td>
                 <td>{draft.longitude.toFixed(5)}</td>
+                <td className="sun-cell">—</td>
+                <td className="sun-cell">—</td>
                 <td>
                   <button onClick={saveDraft} disabled={saving}>
                     {saving ? "Saving…" : "Save"}
@@ -298,6 +334,26 @@ export function MapView() {
                 <td>{p.name}</td>
                 <td>{p.latitude.toFixed(5)}</td>
                 <td>{p.longitude.toFixed(5)}</td>
+                <td className="sun-cell">
+                  <div className="sun-time">{fmtTime(p.sun.sunrise)}</div>
+                  <div className="sun-sub" title="Morning golden hour">
+                    ✨{" "}
+                    {fmtRange(
+                      p.sun.morningGoldenHour.start,
+                      p.sun.morningGoldenHour.end,
+                    )}
+                  </div>
+                </td>
+                <td className="sun-cell">
+                  <div className="sun-time">{fmtTime(p.sun.sunset)}</div>
+                  <div className="sun-sub" title="Evening golden hour">
+                    ✨{" "}
+                    {fmtRange(
+                      p.sun.eveningGoldenHour.start,
+                      p.sun.eveningGoldenHour.end,
+                    )}
+                  </div>
+                </td>
                 <td>
                   <button
                     className="danger"
@@ -316,7 +372,7 @@ export function MapView() {
             {pois.length === 0 && !draft && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   style={{ textAlign: "center", color: "#888", padding: 20 }}
                 >
                   No POIs yet. Click the map to add one.

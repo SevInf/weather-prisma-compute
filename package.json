@@ -23,12 +23,14 @@
     "pmtiles": "^4.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-map-gl": "^8.1.1"
+    "react-map-gl": "^8.1.1",
+    "suncalc": "^1.9.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/suncalc": "^1.9.2",
     "prisma-next": "^0.11.0",
     "typescript": "^5.6.3"
   }
