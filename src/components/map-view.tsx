@@ -26,7 +26,32 @@ type Poi = {
     morningGoldenHour: { start: string | null; end: string | null };
     eveningGoldenHour: { start: string | null; end: string | null };
   };
+  forecast: {
+    fog: {
+      probability: number;
+      at: string;
+      temperature: number;
+      dewPoint: number;
+      spread: number;
+    } | null;
+    sunrise: {
+      beautiful: boolean;
+      at: string;
+      cloudCoverLow: number;
+      cloudCoverMid: number;
+      cloudCoverHigh: number;
+    } | null;
+    sunset: {
+      beautiful: boolean;
+      at: string;
+      cloudCoverLow: number;
+      cloudCoverMid: number;
+      cloudCoverHigh: number;
+    } | null;
+  } | null;
 };
+
+type BeautyForecast = NonNullable<Poi["forecast"]>["sunrise"];
 
 type Draft = {
   name: string;
@@ -48,6 +73,34 @@ function fmtRange(
   end: string | null,
 ): string {
   return `${fmtTime(start)} – ${fmtTime(end)}`;
+}
+
+function beautyTooltip(b: BeautyForecast): string {
+  if (!b) return "";
+  return (
+    `Cloud cover — low ${b.cloudCoverLow}%, mid ${b.cloudCoverMid}%, ` +
+    `high ${b.cloudCoverHigh}%. ` +
+    (b.beautiful
+      ? "Beautiful conditions: clear horizon under a high cloud deck."
+      : "Not the photogenic combo (need low/mid ≤ 10% and high ≥ 80%).")
+  );
+}
+
+function BeautyBadge({ forecast }: { forecast: BeautyForecast }) {
+  if (!forecast) return null;
+  return (
+    <span
+      className={`beauty-badge ${
+        forecast.beautiful ? "beauty-yes" : "beauty-no"
+      }`}
+      title={beautyTooltip(forecast)}
+      aria-label={
+        forecast.beautiful ? "Beautiful conditions" : "Mediocre conditions"
+      }
+    >
+      {forecast.beautiful ? "😊" : "😞"}
+    </span>
+  );
 }
 
 // Register the `pmtiles://` protocol with MapLibre so it can read tiles from
@@ -266,17 +319,26 @@ export function MapView() {
               <th>Name</th>
               <th style={{ width: 90 }}>Latitude</th>
               <th style={{ width: 90 }}>Longitude</th>
-              <th style={{ width: 150 }} title="Sunrise and morning golden hour">
+              <th style={{ width: 160 }} title="Sunrise and morning golden hour">
                 <span className="sun-icon" aria-hidden>
                   🌅
                 </span>{" "}
                 Sunrise
               </th>
-              <th style={{ width: 150 }} title="Sunset and evening golden hour">
+              <th style={{ width: 160 }} title="Sunset and evening golden hour">
                 <span className="sun-icon" aria-hidden>
                   🌇
                 </span>{" "}
                 Sunset
+              </th>
+              <th
+                style={{ width: 100 }}
+                title="Probability of fog about two hours after sunrise, derived from the ICON-D2 forecast of dew-point depression (T − Td) at that hour."
+              >
+                <span className="sun-icon" aria-hidden>
+                  🌫️
+                </span>{" "}
+                Fog
               </th>
               <th style={{ width: 110 }}>Actions</th>
             </tr>
@@ -302,6 +364,7 @@ export function MapView() {
                 </td>
                 <td>{draft.latitude.toFixed(5)}</td>
                 <td>{draft.longitude.toFixed(5)}</td>
+                <td className="sun-cell">—</td>
                 <td className="sun-cell">—</td>
                 <td className="sun-cell">—</td>
                 <td>
@@ -335,7 +398,10 @@ export function MapView() {
                 <td>{p.latitude.toFixed(5)}</td>
                 <td>{p.longitude.toFixed(5)}</td>
                 <td className="sun-cell">
-                  <div className="sun-time">{fmtTime(p.sun.sunrise)}</div>
+                  <div className="sun-time">
+                    {fmtTime(p.sun.sunrise)}
+                    <BeautyBadge forecast={p.forecast?.sunrise ?? null} />
+                  </div>
                   <div className="sun-sub" title="Morning golden hour">
                     ✨{" "}
                     {fmtRange(
@@ -345,7 +411,10 @@ export function MapView() {
                   </div>
                 </td>
                 <td className="sun-cell">
-                  <div className="sun-time">{fmtTime(p.sun.sunset)}</div>
+                  <div className="sun-time">
+                    {fmtTime(p.sun.sunset)}
+                    <BeautyBadge forecast={p.forecast?.sunset ?? null} />
+                  </div>
                   <div className="sun-sub" title="Evening golden hour">
                     ✨{" "}
                     {fmtRange(
@@ -353,6 +422,31 @@ export function MapView() {
                       p.sun.eveningGoldenHour.end,
                     )}
                   </div>
+                </td>
+                <td className="sun-cell">
+                  {p.forecast?.fog ? (
+                    <div
+                      className={`fog-cell fog-${
+                        p.forecast.fog.probability >= 60
+                          ? "high"
+                          : p.forecast.fog.probability >= 30
+                            ? "med"
+                            : "low"
+                      }`}
+                      title={`At ${new Date(p.forecast.fog.at).toLocaleString(
+                        [],
+                        { hour: "2-digit", minute: "2-digit", month: "short", day: "2-digit" },
+                      )}: ${p.forecast.fog.temperature.toFixed(
+                        1,
+                      )}°C, dew point ${p.forecast.fog.dewPoint.toFixed(
+                        1,
+                      )}°C, spread ${p.forecast.fog.spread.toFixed(1)}°C`}
+                    >
+                      {p.forecast.fog.probability}%
+                    </div>
+                  ) : (
+                    <span style={{ color: "#999" }}>—</span>
+                  )}
                 </td>
                 <td>
                   <button
@@ -372,7 +466,7 @@ export function MapView() {
             {pois.length === 0 && !draft && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   style={{ textAlign: "center", color: "#888", padding: 20 }}
                 >
                   No POIs yet. Click the map to add one.

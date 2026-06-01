@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import SunCalc from "suncalc";
 import { db } from "@/prisma/db";
+import { fetchForecasts } from "@/lib/forecast";
 
 function iso(date: Date): string | null {
   // SunCalc returns `Invalid Date` for extreme latitudes during polar
@@ -8,20 +9,28 @@ function iso(date: Date): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+// Compute the **next** upcoming sunrise/sunset (today if still ahead,
+// otherwise tomorrow's). Today's sunrise is already in the past for most of
+// the day, which makes "fog at sunrise + 2 h" useless.
 function sunTimesFor(latitude: number, longitude: number, now: Date) {
-  const t = SunCalc.getTimes(now, latitude, longitude);
+  const today = SunCalc.getTimes(now, latitude, longitude);
+  const tomorrow = SunCalc.getTimes(
+    new Date(now.getTime() + 24 * 60 * 60 * 1000),
+    latitude,
+    longitude,
+  );
+  const sunriseDay = today.sunrise > now ? today : tomorrow;
+  const sunsetDay = today.sunset > now ? today : tomorrow;
   return {
-    sunrise: iso(t.sunrise),
-    sunset: iso(t.sunset),
-    // Morning: sun rises and climbs to ~6° above the horizon.
+    sunrise: iso(sunriseDay.sunrise),
+    sunset: iso(sunsetDay.sunset),
     morningGoldenHour: {
-      start: iso(t.sunrise),
-      end: iso(t.goldenHourEnd),
+      start: iso(sunriseDay.sunrise),
+      end: iso(sunriseDay.goldenHourEnd),
     },
-    // Evening: sun drops from ~6° down to the horizon.
     eveningGoldenHour: {
-      start: iso(t.goldenHour),
-      end: iso(t.sunset),
+      start: iso(sunsetDay.goldenHour),
+      end: iso(sunsetDay.sunset),
     },
   };
 }
@@ -34,11 +43,28 @@ export async function GET() {
     .select("id", "name", "latitude", "longitude")
     .orderBy((p) => p.id.desc())
     .all();
+
   const now = new Date();
+  const withSun = pois.map((p) => ({
+    ...p,
+    sun: sunTimesFor(p.latitude, p.longitude, now),
+  }));
+
+  // One Open-Meteo request, all POIs.
+  const forecasts = await fetchForecasts(
+    withSun.map((p) => ({
+      id: p.id,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      sunrise: p.sun.sunrise,
+      sunset: p.sun.sunset,
+    })),
+  );
+
   return NextResponse.json(
-    pois.map((p) => ({
+    withSun.map((p) => ({
       ...p,
-      sun: sunTimesFor(p.latitude, p.longitude, now),
+      forecast: forecasts.get(p.id) ?? null,
     })),
   );
 }

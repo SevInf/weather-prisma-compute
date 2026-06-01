@@ -164,6 +164,49 @@ body {
   color: #92400e;
 }
 
+.poi-table .sun-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.poi-table .beauty-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+  cursor: help;
+}
+
+.poi-table .beauty-badge.beauty-yes {
+  filter: saturate(1.4);
+}
+
+.poi-table .beauty-badge.beauty-no {
+  filter: grayscale(0.35);
+  opacity: 0.85;
+}
+
+.poi-table .fog-cell {
+  font-weight: 600;
+  text-align: right;
+  padding-right: 6px;
+  cursor: help;
+  font-variant-numeric: tabular-nums;
+}
+
+.poi-table .fog-cell.fog-low {
+  color: #6b7280;
+}
+
+.poi-table .fog-cell.fog-med {
+  color: #b45309;
+}
+
+.poi-table .fog-cell.fog-high {
+  color: #1d4ed8;
+}
+
 /* Markers */
 .pin {
   width: 14px;
