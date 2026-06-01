@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import type { MapLayerMouseEvent } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
@@ -63,7 +69,18 @@ export function MapView() {
   const [pois, setPois] = useState<Poi[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Refs into the table so we can scroll the selected row into view.
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
+  useEffect(() => {
+    if (selectedId == null) return;
+    const row = rowRefs.current.get(selectedId);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId]);
 
   const refreshPois = useCallback(async () => {
     try {
@@ -89,6 +106,38 @@ export function MapView() {
         : { name: "", latitude: lat, longitude: lng },
     );
   }, []);
+
+  const deletePoi = useCallback(
+    async (id: number) => {
+      const target = pois.find((p) => p.id === id);
+      if (!target) return;
+      if (
+        !window.confirm(`Delete "${target.name}"? This cannot be undone.`)
+      ) {
+        return;
+      }
+      setDeletingId(id);
+      setError(null);
+      try {
+        const res = await fetch(`/api/pois/${id}`, { method: "DELETE" });
+        if (!res.ok && res.status !== 204) {
+          const payload = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(
+            payload.error ?? `DELETE /api/pois/${id} -> ${res.status}`,
+          );
+        }
+        if (selectedId === id) setSelectedId(null);
+        await refreshPois();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [pois, refreshPois, selectedId],
+  );
 
   const saveDraft = useCallback(async () => {
     if (!draft) return;
@@ -126,7 +175,7 @@ export function MapView() {
   return (
     <div className="layout">
       <div className="map-pane">
-        <Map
+        <MapGL
           initialViewState={{
             longitude: 13.405,
             latitude: 52.52,
@@ -145,8 +194,19 @@ export function MapView() {
               longitude={p.longitude}
               latitude={p.latitude}
               anchor="bottom"
+              onClick={(e) => {
+                // Stop the underlying map click so we don't drop a draft
+                // pin under the selected POI.
+                e.originalEvent.stopPropagation();
+                setSelectedId(p.id);
+              }}
             >
-              <div className="pin pin--saved" title={p.name} />
+              <div
+                className={`pin pin--saved${
+                  selectedId === p.id ? " pin--selected" : ""
+                }`}
+                title={p.name}
+              />
             </Marker>
           ))}
           {draft && (
@@ -161,7 +221,7 @@ export function MapView() {
               />
             </Marker>
           )}
-        </Map>
+        </MapGL>
         {error && (
           <div className="error-toast" onClick={() => setError(null)}>
             {error} <span style={{ opacity: 0.7 }}>(click to dismiss)</span>
@@ -184,7 +244,7 @@ export function MapView() {
               <th>Name</th>
               <th style={{ width: 110 }}>Latitude</th>
               <th style={{ width: 110 }}>Longitude</th>
-              <th style={{ width: 200 }}>Actions</th>
+              <th style={{ width: 220 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -223,12 +283,34 @@ export function MapView() {
               </tr>
             )}
             {pois.map((p) => (
-              <tr key={p.id}>
+              <tr
+                key={p.id}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(p.id, el);
+                  else rowRefs.current.delete(p.id);
+                }}
+                className={selectedId === p.id ? "selected" : undefined}
+                onClick={() =>
+                  setSelectedId((cur) => (cur === p.id ? null : p.id))
+                }
+              >
                 <td>{p.id}</td>
                 <td>{p.name}</td>
                 <td>{p.latitude.toFixed(5)}</td>
                 <td>{p.longitude.toFixed(5)}</td>
-                <td />
+                <td>
+                  <button
+                    className="danger"
+                    onClick={(e) => {
+                      // Don't toggle row selection when clicking the button.
+                      e.stopPropagation();
+                      deletePoi(p.id);
+                    }}
+                    disabled={deletingId === p.id}
+                  >
+                    {deletingId === p.id ? "Deleting…" : "Delete"}
+                  </button>
+                </td>
               </tr>
             ))}
             {pois.length === 0 && !draft && (

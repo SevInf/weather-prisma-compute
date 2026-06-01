@@ -73,6 +73,20 @@ body {
   background: #fff8d5;
 }
 
+.poi-table tbody tr {
+  cursor: pointer;
+}
+
+.poi-table tbody tr.selected {
+  background: #dbeafe;
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.poi-table tbody tr.selected td {
+  color: #1e3a8a;
+}
+
 .poi-table input {
   width: 100%;
   padding: 4px 6px;
@@ -111,6 +125,17 @@ body {
   background: #f0f0f0;
 }
 
+.poi-table button.danger {
+  background: white;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.poi-table button.danger:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* Markers */
 .pin {
   width: 14px;
@@ -123,6 +148,14 @@ body {
 
 .pin--saved {
   background: #2563eb;
+}
+
+.pin--selected {
+  background: #1d4ed8;
+  border-color: #fde047;
+  box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.6),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+  transform: rotate(-45deg) scale(1.25);
 }
 
 .pin--draft {

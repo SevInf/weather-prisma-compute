@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "postbuild": "cp -R .next/static .next/standalone/.next/static && (test -d public && cp -R public .next/standalone/public || true)",
+    "start": "bun .next/standalone/server.js",
+    "serve": "bun run build && bun run start",
     "lint": "next lint",
     "prebuild": "prisma-next contract emit",
     "contract:emit": "prisma-next contract emit",
