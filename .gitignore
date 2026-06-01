@@ -8,3 +8,4 @@ data/*.pmtiles
 frontend/dist/
 dist/
 *.tsbuildinfo
+.env

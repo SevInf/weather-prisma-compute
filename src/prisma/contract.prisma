@@ -1,0 +1,10 @@
+// use prisma-next
+
+model Poi {
+  id        Int      @id @default(autoincrement())
+  name      String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+}

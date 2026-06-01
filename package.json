@@ -3,18 +3,25 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
-  "workspaces": ["frontend"],
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "dev:frontend": "bun run --filter weather-app-frontend dev",
     "start": "bun run src/index.ts",
     "build": "bun run --filter weather-app-frontend build",
-    "extract-tiles": "pmtiles extract https://build.protomaps.com/20260601.pmtiles data/germany.pmtiles --bbox=11.265,51.359,14.766,53.559 --maxzoom=11 --download-threads=8"
+    "extract-tiles": "pmtiles extract https://build.protomaps.com/20260601.pmtiles data/germany.pmtiles --bbox=11.265,51.359,14.766,53.559 --maxzoom=11 --download-threads=8",
+    "contract:emit": "prisma-next contract emit"
   },
   "dependencies": {
+    "@prisma-next/postgres": "^0.11.0",
+    "dotenv": "^17.4.2",
     "hono": "^4.6.14"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node": "^25.9.1",
+    "prisma-next": "^0.11.0"
   }
 }
