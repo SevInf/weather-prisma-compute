@@ -8,7 +8,144 @@ body,
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-.map-container {
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.map-pane {
+  position: relative;
+  flex: 1 1 60%;
+  min-height: 0;
+}
+
+.table-pane {
+  flex: 1 1 40%;
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid #ddd;
+  background: #fafafa;
+}
+
+.table-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  position: sticky;
+  top: 0;
+  background: #fafafa;
+  border-bottom: 1px solid #e5e5e5;
+  z-index: 1;
+}
+
+.table-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.table-header small {
+  color: #777;
+}
+
+.poi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.poi-table th,
+.poi-table td {
+  text-align: left;
+  padding: 6px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.poi-table th {
+  font-weight: 600;
+  color: #555;
+  background: #f3f3f3;
+}
+
+.poi-table tr.draft-row {
+  background: #fff8d5;
+}
+
+.poi-table input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.poi-table button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: white;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.poi-table button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.poi-table button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.poi-table button.secondary {
+  background: white;
+  color: #333;
+  border-color: #ccc;
+}
+
+.poi-table button.secondary:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+/* Markers */
+.pin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.pin--saved {
+  background: #2563eb;
+}
+
+.pin--draft {
+  background: #f59e0b;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.error-toast {
   position: absolute;
-  inset: 0;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  background: rgba(220, 38, 38, 0.95);
+  color: white;
+  border-radius: 4px;
+  font-size: 13px;
+  max-width: 70%;
+  cursor: pointer;
+  z-index: 10;
 }

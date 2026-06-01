@@ -2,11 +2,64 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { db } from "./prisma/db";
 
 const TILES_PATH = resolve("data/germany.pmtiles");
 const FRONTEND_DIST = "./frontend/dist";
 
 const app = new Hono();
+
+// ---------- POI API ----------
+
+app.get("/api/pois", async (c) => {
+  const pois = await db.orm.Poi
+    .select("id", "name", "latitude", "longitude")
+    .orderBy((p) => p.id.desc())
+    .all();
+  return c.json(pois);
+});
+
+app.post("/api/pois", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "Expected an object" }, 400);
+  }
+  const { name, latitude, longitude } = body as Record<string, unknown>;
+
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return c.json({ error: "`name` must be a non-empty string" }, 400);
+  }
+  if (
+    typeof latitude !== "number" ||
+    !Number.isFinite(latitude) ||
+    latitude < -90 ||
+    latitude > 90
+  ) {
+    return c.json({ error: "`latitude` must be a number in [-90, 90]" }, 400);
+  }
+  if (
+    typeof longitude !== "number" ||
+    !Number.isFinite(longitude) ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return c.json(
+      { error: "`longitude` must be a number in [-180, 180]" },
+      400,
+    );
+  }
+
+  const poi = await db.orm.Poi
+    .select("id", "name", "latitude", "longitude")
+    .create({ name: name.trim(), latitude, longitude });
+  return c.json(poi, 201);
+});
 
 // Serve the .pmtiles archive with HTTP Range support.
 // MapLibre's pmtiles client issues range requests to read the header,
