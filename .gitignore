@@ -1,0 +1,10 @@
+.prisma/
+node_modules/
+.direnv/
+bun.lockb
+*.log
+.DS_Store
+data/*.pmtiles
+frontend/dist/
+dist/
+*.tsbuildinfo
