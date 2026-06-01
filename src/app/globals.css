@@ -69,6 +69,13 @@ body {
   background: #f3f3f3;
 }
 
+.poi-table .header-day {
+  font-weight: 400;
+  color: #888;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .poi-table tr.draft-row {
   background: #fff8d5;
 }
@@ -156,6 +163,15 @@ body {
   color: #b45309;
 }
 
+.poi-table .sun-sub-cell {
+  color: #b45309;
+  font-size: 12px;
+}
+
+.poi-table tr.selected .sun-sub-cell {
+  color: #92400e;
+}
+
 .poi-table tr.selected .sun-time {
   color: #1e3a8a;
 }
@@ -187,23 +203,40 @@ body {
   opacity: 0.85;
 }
 
-.poi-table .fog-cell {
-  font-weight: 600;
-  text-align: right;
-  padding-right: 6px;
-  cursor: help;
+.poi-table .fog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
-.poi-table .fog-cell.fog-low {
+.poi-table .fog-reading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  cursor: help;
+  font-size: 11px;
+}
+
+.poi-table .fog-reading .fog-at {
   color: #6b7280;
 }
 
-.poi-table .fog-cell.fog-med {
+.poi-table .fog-reading .fog-pct {
+  font-weight: 600;
+}
+
+.poi-table .fog-reading.fog-low .fog-pct {
+  color: #6b7280;
+}
+
+.poi-table .fog-reading.fog-med .fog-pct {
   color: #b45309;
 }
 
-.poi-table .fog-cell.fog-high {
+.poi-table .fog-reading.fog-high .fog-pct {
   color: #1d4ed8;
 }
 

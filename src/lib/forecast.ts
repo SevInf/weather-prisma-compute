@@ -18,8 +18,11 @@ export type ForecastInput = {
   id: number;
   latitude: number;
   longitude: number;
-  sunrise: string | null;
-  sunset: string | null;
+  // One fog probability is computed per target timestamp. Pass as many as
+  // you'd like to inspect across the morning (e.g. sunrise, +1 h, +2 h).
+  fogTargets: string[];
+  sunriseAt: string | null;
+  sunsetAt: string | null;
 };
 
 export type FogForecast = {
@@ -39,7 +42,9 @@ export type BeautyForecast = {
 };
 
 export type PoiForecast = {
-  fog: FogForecast | null;
+  // One reading per requested `fogTargets` entry. Targets that fall outside
+  // the forecast window or whose hour has missing data are skipped.
+  fog: FogForecast[];
   sunrise: BeautyForecast | null;
   sunset: BeautyForecast | null;
 };
@@ -111,26 +116,20 @@ function nearestHourIndex(times: string[], targetIso: string): number | null {
 function summarize(loc: LocationResult, input: ForecastInput): PoiForecast {
   const h = loc.hourly;
 
-  let fog: FogForecast | null = null;
-  if (input.sunrise) {
-    // "Fog around sunrise + 2 h".
-    const target = new Date(
-      Date.parse(input.sunrise) + 2 * 60 * 60 * 1000,
-    ).toISOString();
+  const fog: FogForecast[] = [];
+  for (const target of input.fogTargets) {
     const idx = nearestHourIndex(h.time, target);
-    if (idx != null) {
-      const t = h.temperature_2m[idx];
-      const td = h.dew_point_2m[idx];
-      if (typeof t === "number" && typeof td === "number") {
-        fog = {
-          probability: fogProbability(t, td),
-          at: `${h.time[idx]}Z`,
-          temperature: t,
-          dewPoint: td,
-          spread: Number((t - td).toFixed(2)),
-        };
-      }
-    }
+    if (idx == null) continue;
+    const t = h.temperature_2m[idx];
+    const td = h.dew_point_2m[idx];
+    if (typeof t !== "number" || typeof td !== "number") continue;
+    fog.push({
+      probability: fogProbability(t, td),
+      at: `${h.time[idx]}Z`,
+      temperature: t,
+      dewPoint: td,
+      spread: Number((t - td).toFixed(2)),
+    });
   }
 
   function beautyAt(targetIso: string | null): BeautyForecast | null {
@@ -158,8 +157,8 @@ function summarize(loc: LocationResult, input: ForecastInput): PoiForecast {
 
   return {
     fog,
-    sunrise: beautyAt(input.sunrise),
-    sunset: beautyAt(input.sunset),
+    sunrise: beautyAt(input.sunriseAt),
+    sunset: beautyAt(input.sunsetAt),
   };
 }
 

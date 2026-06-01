@@ -9,9 +9,21 @@ function iso(date: Date): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-// Compute the **next** upcoming sunrise/sunset (today if still ahead,
-// otherwise tomorrow's). Today's sunrise is already in the past for most of
-// the day, which makes "fog at sunrise + 2 h" useless.
+/**
+ * Compute, for one POI, the **next future occurrence** of each interesting
+ * sun event. Each event is picked independently so we never display anything
+ * that has already happened:
+ *
+ * - Sunrise / sunset: today's if still upcoming, otherwise tomorrow's.
+ * - Morning golden hour: tied to whichever sunrise we chose (start = sunrise,
+ *   end = goldenHourEnd of that day).
+ * - Evening golden hour: anchored on its **start** (`goldenHour` ~ +6° as the
+ *   sun is dropping), so we may end up displaying tomorrow's GH when today's
+ *   has already started even if today's sunset is still ahead.
+ * - Fog target times: three hourly samples (sunrise, +1 h, +2 h) of the
+ *   **next** sunrise we're displaying. They share a single morning so the
+ *   three readings are coherent in time.
+ */
 function sunTimesFor(latitude: number, longitude: number, now: Date) {
   const today = SunCalc.getTimes(now, latitude, longitude);
   const tomorrow = SunCalc.getTimes(
@@ -19,19 +31,34 @@ function sunTimesFor(latitude: number, longitude: number, now: Date) {
     latitude,
     longitude,
   );
+
   const sunriseDay = today.sunrise > now ? today : tomorrow;
   const sunsetDay = today.sunset > now ? today : tomorrow;
+  // Evening GH key moment is its start; if today's has begun, take tomorrow's.
+  const eveningGHDay = today.goldenHour > now ? today : tomorrow;
+
+  const sunrise = sunriseDay.sunrise;
+  const sunset = sunsetDay.sunset;
+
+  // Fog readings: sunrise, sunrise + 1 h, sunrise + 2 h on the next sunrise's
+  // morning. All three share a coherent morning context.
+  const HOUR = 60 * 60 * 1000;
+  const fogTargets = [0, 1, 2].map((h) =>
+    new Date(sunrise.getTime() + h * HOUR),
+  );
+
   return {
-    sunrise: iso(sunriseDay.sunrise),
-    sunset: iso(sunsetDay.sunset),
+    sunrise: iso(sunrise),
+    sunset: iso(sunset),
     morningGoldenHour: {
       start: iso(sunriseDay.sunrise),
       end: iso(sunriseDay.goldenHourEnd),
     },
     eveningGoldenHour: {
-      start: iso(sunsetDay.goldenHour),
-      end: iso(sunsetDay.sunset),
+      start: iso(eveningGHDay.goldenHour),
+      end: iso(eveningGHDay.sunset),
     },
+    fogTargets: fogTargets.map(iso).filter((s): s is string => s !== null),
   };
 }
 
@@ -45,27 +72,35 @@ export async function GET() {
     .all();
 
   const now = new Date();
-  const withSun = pois.map((p) => ({
-    ...p,
-    sun: sunTimesFor(p.latitude, p.longitude, now),
-  }));
+  const withSun = pois.map((p) => {
+    const sun = sunTimesFor(p.latitude, p.longitude, now);
+    return { ...p, sun };
+  });
 
-  // One Open-Meteo request, all POIs.
+  // One Open-Meteo request, all POIs. Each POI passes the timestamps it
+  // wants evaluated; the lib finds the nearest forecast hour for each.
   const forecasts = await fetchForecasts(
     withSun.map((p) => ({
       id: p.id,
       latitude: p.latitude,
       longitude: p.longitude,
-      sunrise: p.sun.sunrise,
-      sunset: p.sun.sunset,
+      fogTargets: p.sun.fogTargets,
+      sunriseAt: p.sun.sunrise,
+      sunsetAt: p.sun.sunset,
     })),
   );
 
   return NextResponse.json(
-    withSun.map((p) => ({
-      ...p,
-      forecast: forecasts.get(p.id) ?? null,
-    })),
+    withSun.map((p) => {
+      // `fogTargets` is purely an internal pivot used to drive the forecast
+      // call; strip it from the response so the client schema stays narrow.
+      const { fogTargets: _fogTargets, ...sun } = p.sun;
+      return {
+        ...p,
+        sun,
+        forecast: forecasts.get(p.id) ?? null,
+      };
+    }),
   );
 }
 

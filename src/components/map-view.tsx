@@ -27,13 +27,13 @@ type Poi = {
     eveningGoldenHour: { start: string | null; end: string | null };
   };
   forecast: {
-    fog: {
+    fog: Array<{
       probability: number;
       at: string;
       temperature: number;
       dewPoint: number;
       spread: number;
-    } | null;
+    }>;
     sunrise: {
       beautiful: boolean;
       at: string;
@@ -59,9 +59,10 @@ type Draft = {
   longitude: number;
 };
 
-// Format an ISO timestamp as `HH:MM` in the browser's local timezone. Returns
-// an em-dash when the server reports no value (e.g. polar day/night).
-function fmtTime(iso: string | null): string {
+// Format an ISO timestamp as `HH:MM` in the browser's local timezone.
+// Returns an em-dash on null/Invalid Date. The day each event falls on is
+// shown once in the column header (via `dayLabel`), so cells stay narrow.
+function fmtTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
@@ -72,7 +73,29 @@ function fmtRange(
   start: string | null,
   end: string | null,
 ): string {
+  if (!start && !end) return "—";
   return `${fmtTime(start)} – ${fmtTime(end)}`;
+}
+
+// "today" / "tomorrow" / weekday-short ("Wed"). Used in column headers so the
+// table can show what day every column refers to without repeating it in
+// every cell.
+function dayLabel(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const startOfDay = (x: Date) => {
+    const y = new Date(x);
+    y.setHours(0, 0, 0, 0);
+    return y.getTime();
+  };
+  const diffDays = Math.round(
+    (startOfDay(d) - startOfDay(new Date())) / (24 * 60 * 60 * 1000),
+  );
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "tomorrow";
+  if (diffDays === -1) return "yesterday";
+  return d.toLocaleDateString([], { weekday: "short" });
 }
 
 function beautyTooltip(b: BeautyForecast): string {
@@ -84,6 +107,15 @@ function beautyTooltip(b: BeautyForecast): string {
       ? "Beautiful conditions: clear horizon under a high cloud deck."
       : "Not the photogenic combo (need low/mid ≤ 10% and high ≥ 80%).")
   );
+}
+
+// Header decoration: shows the day each column's values refer to. Computed
+// once per column from the first POI's timestamp — all our POIs are in the
+// same timezone bucket so the day will be the same across rows.
+function ColumnDay({ iso }: { iso: string | null | undefined }) {
+  const label = dayLabel(iso);
+  if (!label) return null;
+  return <span className="header-day"> ({label})</span>;
 }
 
 function BeautyBadge({ forecast }: { forecast: BeautyForecast }) {
@@ -137,11 +169,133 @@ function useGermanyStyle(): StyleSpecification {
   );
 }
 
+type SunColumn = {
+  id: string;
+  icon: string;
+  label: string;
+  width: number;
+  title?: string;
+  // The reference timestamp for this column at a given POI. Drives both the
+  // chronological column sort and the per-column day label in the header.
+  sortIso: (p: Poi) => string | null | undefined;
+  // The class applied to the <td>. `sun-sub-cell` styles golden-hour ranges
+  // in amber; the plain `sun-cell` is the default.
+  cellClass?: string;
+  renderCell: (p: Poi) => React.ReactNode;
+};
+
+const SUN_COLUMNS: SunColumn[] = [
+  {
+    id: "sunrise",
+    icon: "🌅",
+    label: "Sunrise",
+    width: 110,
+    sortIso: (p) => p.sun.sunrise,
+    renderCell: (p) => (
+      <div className="sun-time">
+        {fmtTime(p.sun.sunrise)}
+        <BeautyBadge forecast={p.forecast?.sunrise ?? null} />
+      </div>
+    ),
+  },
+  {
+    id: "morningGH",
+    icon: "✨",
+    label: "Morning golden hour",
+    width: 150,
+    cellClass: "sun-sub-cell",
+    sortIso: (p) => p.sun.morningGoldenHour.start,
+    renderCell: (p) =>
+      fmtRange(p.sun.morningGoldenHour.start, p.sun.morningGoldenHour.end),
+  },
+  {
+    id: "sunset",
+    icon: "🌇",
+    label: "Sunset",
+    width: 110,
+    sortIso: (p) => p.sun.sunset,
+    renderCell: (p) => (
+      <div className="sun-time">
+        {fmtTime(p.sun.sunset)}
+        <BeautyBadge forecast={p.forecast?.sunset ?? null} />
+      </div>
+    ),
+  },
+  {
+    id: "eveningGH",
+    icon: "✨",
+    label: "Evening golden hour",
+    width: 150,
+    cellClass: "sun-sub-cell",
+    sortIso: (p) => p.sun.eveningGoldenHour.start,
+    renderCell: (p) =>
+      fmtRange(p.sun.eveningGoldenHour.start, p.sun.eveningGoldenHour.end),
+  },
+  {
+    id: "fog",
+    icon: "🌫️",
+    label: "Fog",
+    width: 130,
+    title:
+      "Probability of fog at sunrise, +1 h and +2 h. Derived from the ICON-D2 forecast of dew-point depression (T − Td) — small spread means the air is near saturation.",
+    // Sort by the first reading (sunrise itself).
+    sortIso: (p) => p.forecast?.fog?.[0]?.at,
+    renderCell: (p) => {
+      const readings = p.forecast?.fog ?? [];
+      if (readings.length === 0) {
+        return <span style={{ color: "#999" }}>—</span>;
+      }
+      return (
+        <div className="fog-list">
+          {readings.map((r) => {
+            const bucket =
+              r.probability >= 60
+                ? "high"
+                : r.probability >= 30
+                  ? "med"
+                  : "low";
+            return (
+              <div
+                key={r.at}
+                className={`fog-reading fog-${bucket}`}
+                title={`${r.temperature.toFixed(
+                  1,
+                )}°C, dew point ${r.dewPoint.toFixed(
+                  1,
+                )}°C, spread ${r.spread.toFixed(1)}°C`}
+              >
+                <span className="fog-at">{fmtTime(r.at)}</span>
+                <span className="fog-pct">{r.probability}%</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+];
+
 export function MapView() {
   usePmtilesProtocol();
   const style = useGermanyStyle();
 
   const [pois, setPois] = useState<Poi[]>([]);
+  // The first POI drives the per-column day label; all POIs in the same
+  // region share a day for each event.
+  const firstPoi = pois[0];
+
+  // Sort the sun columns chronologically by each column's reference time on
+  // the first POI. Columns whose timestamp is missing/null sink to the end so
+  // they don't disrupt the chronological reading of the rest.
+  const sortedSunColumns = useMemo(() => {
+    if (!firstPoi) return SUN_COLUMNS;
+    const keys = new Map<string, number>();
+    for (const c of SUN_COLUMNS) {
+      const iso = c.sortIso(firstPoi);
+      keys.set(c.id, iso ? Date.parse(iso) : Number.POSITIVE_INFINITY);
+    }
+    return [...SUN_COLUMNS].sort((a, b) => keys.get(a.id)! - keys.get(b.id)!);
+  }, [firstPoi]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -315,38 +469,26 @@ export function MapView() {
         <table className="poi-table">
           <thead>
             <tr>
-              <th style={{ width: 70 }}>ID</th>
               <th>Name</th>
-              <th style={{ width: 90 }}>Latitude</th>
-              <th style={{ width: 90 }}>Longitude</th>
-              <th style={{ width: 160 }} title="Sunrise and morning golden hour">
-                <span className="sun-icon" aria-hidden>
-                  🌅
-                </span>{" "}
-                Sunrise
-              </th>
-              <th style={{ width: 160 }} title="Sunset and evening golden hour">
-                <span className="sun-icon" aria-hidden>
-                  🌇
-                </span>{" "}
-                Sunset
-              </th>
-              <th
-                style={{ width: 100 }}
-                title="Probability of fog about two hours after sunrise, derived from the ICON-D2 forecast of dew-point depression (T − Td) at that hour."
-              >
-                <span className="sun-icon" aria-hidden>
-                  🌫️
-                </span>{" "}
-                Fog
-              </th>
+              {sortedSunColumns.map((c) => (
+                <th
+                  key={c.id}
+                  style={{ width: c.width }}
+                  title={c.title}
+                >
+                  <span className="sun-icon" aria-hidden>
+                    {c.icon}
+                  </span>{" "}
+                  {c.label}
+                  <ColumnDay iso={firstPoi ? c.sortIso(firstPoi) ?? null : null} />
+                </th>
+              ))}
               <th style={{ width: 110 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {draft && (
               <tr className="draft-row">
-                <td>—</td>
                 <td>
                   <input
                     autoFocus
@@ -362,11 +504,11 @@ export function MapView() {
                     }}
                   />
                 </td>
-                <td>{draft.latitude.toFixed(5)}</td>
-                <td>{draft.longitude.toFixed(5)}</td>
-                <td className="sun-cell">—</td>
-                <td className="sun-cell">—</td>
-                <td className="sun-cell">—</td>
+                {sortedSunColumns.map((c) => (
+                  <td key={c.id} className="sun-cell">
+                    —
+                  </td>
+                ))}
                 <td>
                   <button onClick={saveDraft} disabled={saving}>
                     {saving ? "Saving…" : "Save"}
@@ -393,61 +535,17 @@ export function MapView() {
                   setSelectedId((cur) => (cur === p.id ? null : p.id))
                 }
               >
-                <td>{p.id}</td>
                 <td>{p.name}</td>
-                <td>{p.latitude.toFixed(5)}</td>
-                <td>{p.longitude.toFixed(5)}</td>
-                <td className="sun-cell">
-                  <div className="sun-time">
-                    {fmtTime(p.sun.sunrise)}
-                    <BeautyBadge forecast={p.forecast?.sunrise ?? null} />
-                  </div>
-                  <div className="sun-sub" title="Morning golden hour">
-                    ✨{" "}
-                    {fmtRange(
-                      p.sun.morningGoldenHour.start,
-                      p.sun.morningGoldenHour.end,
-                    )}
-                  </div>
-                </td>
-                <td className="sun-cell">
-                  <div className="sun-time">
-                    {fmtTime(p.sun.sunset)}
-                    <BeautyBadge forecast={p.forecast?.sunset ?? null} />
-                  </div>
-                  <div className="sun-sub" title="Evening golden hour">
-                    ✨{" "}
-                    {fmtRange(
-                      p.sun.eveningGoldenHour.start,
-                      p.sun.eveningGoldenHour.end,
-                    )}
-                  </div>
-                </td>
-                <td className="sun-cell">
-                  {p.forecast?.fog ? (
-                    <div
-                      className={`fog-cell fog-${
-                        p.forecast.fog.probability >= 60
-                          ? "high"
-                          : p.forecast.fog.probability >= 30
-                            ? "med"
-                            : "low"
-                      }`}
-                      title={`At ${new Date(p.forecast.fog.at).toLocaleString(
-                        [],
-                        { hour: "2-digit", minute: "2-digit", month: "short", day: "2-digit" },
-                      )}: ${p.forecast.fog.temperature.toFixed(
-                        1,
-                      )}°C, dew point ${p.forecast.fog.dewPoint.toFixed(
-                        1,
-                      )}°C, spread ${p.forecast.fog.spread.toFixed(1)}°C`}
-                    >
-                      {p.forecast.fog.probability}%
-                    </div>
-                  ) : (
-                    <span style={{ color: "#999" }}>—</span>
-                  )}
-                </td>
+                {sortedSunColumns.map((c) => (
+                  <td
+                    key={c.id}
+                    className={`sun-cell${
+                      c.cellClass ? " " + c.cellClass : ""
+                    }`}
+                  >
+                    {c.renderCell(p)}
+                  </td>
+                ))}
                 <td>
                   <button
                     className="danger"
@@ -466,7 +564,7 @@ export function MapView() {
             {pois.length === 0 && !draft && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={2 + sortedSunColumns.length}
                   style={{ textAlign: "center", color: "#888", padding: 20 }}
                 >
                   No POIs yet. Click the map to add one.
