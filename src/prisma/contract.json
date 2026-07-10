@@ -90,13 +90,6 @@
   },
   "storage": {
     "namespaces": {
-      "__unbound__": {
-        "entries": {
-          "table": {}
-        },
-        "id": "__unbound__",
-        "kind": "postgres-unbound-schema"
-      },
       "public": {
         "entries": {
           "table": {
@@ -156,10 +149,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "sha256:2f8b0672f039235bcf08fabb9554c10820dad5a29d29e777f42374d45da3e742"
+    "storageHash": "sha256:eecde426704ea1d784f61e03e451b8afb1c012b44a676cd5efc164c37f6c5ecd"
   },
   "execution": {
-    "executionHash": "sha256:f2d58f81f701fe388fe12c9a16534d4d193f0bbfbc0103f580ae2fc294e34a6d",
+    "executionHash": "sha256:a81c880a30767326a86d331ce36566e1fc143e0a917406d2311c1c868356c441",
     "mutations": {
       "defaults": [
         {
@@ -173,6 +166,7 @@
           },
           "ref": {
             "column": "updatedAt",
+            "namespace": "public",
             "table": "poi"
           }
         }

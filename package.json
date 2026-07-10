@@ -14,7 +14,7 @@
 		"contract:emit": "prisma-next contract emit"
 	},
 	"dependencies": {
-		"@prisma-next/postgres": "0.13.0",
+		"@prisma-next/postgres": "0.14.0",
 		"dotenv": "^17.4.2",
 		"maplibre-gl": "^5.24.0",
 		"next": "^15.0.0",
@@ -28,7 +28,7 @@
 		"@types/react": "^18.3.12",
 		"@types/react-dom": "^18.3.1",
 		"@types/suncalc": "^1.9.2",
-		"prisma-next": "0.13.0",
+		"prisma-next": "0.14.0",
 		"typescript": "^5.6.3"
 	}
 }

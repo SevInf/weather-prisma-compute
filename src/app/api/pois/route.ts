@@ -66,7 +66,12 @@ function sunTimesFor(latitude: number, longitude: number, now: Date) {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-	const pois = await db.orm.Poi.select("id", "name", "latitude", "longitude")
+	const pois = await db.orm.public.Poi.select(
+		"id",
+		"name",
+		"latitude",
+		"longitude",
+	)
 		.orderBy((p) => p.id.desc())
 		.all();
 
@@ -145,7 +150,7 @@ export async function POST(req: Request) {
 		);
 	}
 
-	const poi = await db.orm.Poi.select(
+	const poi = await db.orm.public.Poi.select(
 		"id",
 		"name",
 		"latitude",
