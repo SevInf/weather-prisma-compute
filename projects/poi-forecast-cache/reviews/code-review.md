@@ -4,8 +4,8 @@
 
 ## Summary
 
-- **Current verdict:** D5 R2 — SATISFIED (slice re-closed; operator's stricter trim bar applied)
-- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim)
+- **Current verdict:** D6 R2 — SATISFIED (slice re-closed)
+- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim), D6 (services/repositories split + functional core)
 - **DoD scoreboard totals:** 7 PASS / 0 FAIL / 0 NOT VERIFIED
 - **Open findings:** 0 (F1, F2 resolved at `35f3e1e`)
 - **Open escalations:** 0
@@ -25,6 +25,8 @@
 | SL-1  | Manual verification log attached (2× GET cache-hit; post-truncate cold path) | D3 | PASS | Both scenarios recorded with exact log lines, status codes, programmatic shape check, staleAt reconciliation (implementer report D3 R1). Orchestrator: attach the log to the PR body at open time |
 
 Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRAL — <link>` / `OUT OF SCOPE`.
+
+> **D6 re-evidencing note:** `c16d807` + `efaa333` relocated the read-through behaviour into `src/services/cached-forecast-source.ts` (+ `src/repositories/*`) with zero behaviour change (verified phase-by-phase on disk; log/warn wording byte-preserved). All D3-era behaviour gates re-run at `efaa333`: dev-server smoke, cold path, stub-based grace check — identical outcomes. DoD-1…DoD-4, DoD-6, and SL-1 evidence is re-anchored at `efaa333` accordingly.
 
 ## Subagent IDs
 
@@ -155,7 +157,20 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 
 **For orchestrator:** none.
 
+### D6 R2 — SATISFIED (both D6 commits)
+
+**Scope:** D6 services/repositories split + functional-core decomposition. Commits `c16d807`, `efaa333`.
+
+**Tasks:** R1 conditions clean (seams verified by my own rg: weather-service zero `db./fetch(/console.` hits; repos policy-free; interface-typed singletons incl. `ModelRunClock`; route byte-untouched; `getForecasts` meteorology-only). R2 conditions clean (shell `hourlyBlocks` exactly 29 lines, every phase a named call; the two if-guards are effect-gating with conditions semantically identical to D3-era `dbHealthy && …`; purity rg — all 12 `console.|await|Date.now|fetch(` hits in shell/effect-privates L63–118, core L121+ clean, no ambient time; build + all three behaviour gates re-run green).
+
+**AC delta:** none — totals hold 7 PASS / 0 FAIL / 0 NOT VERIFIED; DoD-1–4/DoD-6/SL-1 re-evidenced at `efaa333` (note above table). Behaviour byte-identical: partition/triage/plan/assemble/format map 1:1 onto the D3/D5 logic; decision-line and warn wording preserved verbatim (diff-pair check). Scans: zero hits both commits (sole `D2` domain term standing-exempt).
+
+**Findings:** none.
+
+**For orchestrator:** Flag A accepted — `failedCount` is error fidelity the behaviour contract *requires* (best-effort batch preserving partial success = D3 semantics; the warn *response* stays in the service; repo still throws per the pin). Flag B accepted — the interfaces-only pin targets effectful seams; `coveringModel` is deterministic geometry over hardcoded constants, not among the spec's three composed dependencies, and the stub-based grace gate needed no geometry stub — injecting it would be ceremony. Minor: implementer's report says "file 289 lines"; actual is 269 — report-only inaccuracy, no action.
+
 ## Orchestrator notes
 
 - **D3 R1 intent-validation (2026-07-10):** F1 verdict upheld — project spec § At a glance settled "extend `staleAt` instead of re-fetching forecasts" for late runs; the bare-Date clock surface lost that bit. Scope amendment authorized without operator escalation: `src/services/model-clock.ts` is open for D3 R2 (same slice, same PR, spec-mandated behaviour — slice spec § Chosen design (2) and § Scope amended accordingly). F2 rides along. Items-for-user 3 (PN gotcha candidates) parked in `learnings.md` for close-out routing.
 - **D5 R1 operator overrule (2026-07-10):** the operator rejected the R1 trim as insufficient ("more english than typescript in the services"). The R1 keep-decisions for long doc comments are overruled — the bar for R2 is much stricter: method/class doc comments compressed to ≤2 lines carrying only the non-derivable contract; file-header narration cut to references; prose that restates adjacent constants/types removed. D5 R2 dispatched with a hard comment budget.
+- **D6 R1 operator verdict (2026-07-10):** the R1 reviewer round was canceled mid-dispatch; the operator rendered the verdict directly: ANOTHER ROUND NEEDED — "soup just moved to cached-forecast-source… 5 more classes to end up where we were." Orchestrator concurs on inspection: `CachedForecastSource.hourlyBlocks` is a 128-line method carrying the D3-era interleave. R2 requirement: functional-core/imperative-shell decomposition inside the existing seams — pure decision functions (partition / triage / plan-writes / assemble / format-log), shell method ≤ ~30 lines, NO new classes or files beyond the pure functions' module.

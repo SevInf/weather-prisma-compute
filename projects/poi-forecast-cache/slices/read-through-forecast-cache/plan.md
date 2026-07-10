@@ -39,11 +39,19 @@
 - **Hands to:** Slice DoD unchanged; a leaner review surface.
 - **Focus:** `src/prisma/contract.prisma`, `src/services/model-clock.ts`, `src/services/weather-service.ts` — comment lines only; no behavioural edits.
 
+### Dispatch 6: services-repositories-split _(added post-PR-open by operator decision, 2026-07-10)_
+
+- **Outcome:** The forecast path is decomposed per the amended slice spec § Chosen design (3): `ForecastSource` interface; `OpenMeteoForecastRepository` (dumb API repo); `ForecastCacheRepository` interface + PN implementation (dumb CRUD, throws on failure); `CachedForecastSource` (availability policy: freshness, grace, serve-priority, degradation, decision log) implementing `ForecastSource`; `WeatherService` reduced to meteorology over an injected `ForecastSource`. Dependencies on interfaces only; concrete wiring at one composition point; route call-site contract and all behaviour unchanged. DataLoader explicitly rejected (operator decision); in-flight singleflight dedup recorded as follow-up, not in scope.
+- **Builds on:** D3/D5's committed wiring (behavioural contract) + D1's lane + D2's clock.
+- **Hands to:** Slice DoD unchanged; a layered, stub-testable forecast path.
+- **Focus:** `src/services/**` + new `src/repositories/**` (layout implementer's call); comment discipline per D5 R2's telegraphic bar. Out: route, contract, migrations, behaviour changes.
+
 ## Sizing
 
-Dispatch-INVEST: all five pass (D5 = S — mechanical editorial pass with a crisp keep/cut rubric). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
+Dispatch-INVEST: all six pass (D5 = S — mechanical editorial pass; D6 = M — structural refactor with pinned interfaces and behaviour-preservation gates). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
 
 ## Open items
 
 - [x] Dev `DATABASE_URL` — provided by operator 2026-07-10; consumed by D1/D3.
-- [ ] D4 note: dev DB already matches the destination contract (D1's `db update`); the migration package must be reconciled (sign/resolve), not blindly re-applied.
+- [x] D4 note: dev DB already matches the destination contract (D1's `db update`); the migration package must be reconciled (sign/resolve), not blindly re-applied. — done (`31c40ac`).
+- [ ] Follow-up candidate (out of scope): in-flight singleflight dedup in `CachedForecastSource`/`ModelClock` for concurrent-request coalescing (DataLoader evaluated and rejected 2026-07-10 — identity cache conflicts with run-based freshness).

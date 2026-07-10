@@ -31,7 +31,15 @@ One row per POI (`poiId` is the PK); `onDelete: Cascade` because `DELETE /api/po
 - `nextStaleAt(model)` → fetches `https://api.open-meteo.com/data/<model>/static/meta.json`, returns `(last_run_availability_time + update_interval_seconds) * 1000` as a Date. Grace path: when a re-check shows no new run (late run), returns `now + ~10 min` **marked as grace-extended** (e.g. `{staleAt, graceExtended}`), so consumers can distinguish a real next-run instant from a grace extension. Per the project spec, grace-extended results must extend existing rows' `staleAt` *instead of* triggering an upstream forecast refetch (refetch only when rows are missing). _(Amended after D3 R1: the original surface returned a bare Date, which made late-run grace indistinguishable from a new-run instant and caused forecast refetches every grace window — reviewer finding F1.)_
 - Meta fetches are per-model, batched per request cycle (at most 3 upstream meta calls even with many POIs).
 
-**3. Read-through wiring** — in `WeatherService.getForecasts` (or a thin caching wrapper around it — implementer's call; the route's call-site contract must not change):
+**3. Read-through wiring** — _amended 2026-07-10 (operator decision, in-PR refactor): the wiring is decomposed into a services/repositories architecture; the original inline shape below described D3's first landing and remains the behavioural contract._ Layering (dependencies on interfaces only, composition via module singletons):
+
+- `ForecastSource` (interface): `hourlyBlocks(points: {id, latitude, longitude}[]) → Promise<Map<number, HourlyBlock> | null>`.
+- `OpenMeteoForecastRepository` implements `ForecastSource`: the single batched HTTP call; count-mismatch/failure → `null`; no policy.
+- `ForecastCacheRepository` (interface + PN implementation): dumb CRUD — `findByPoiIds`, `upsertMany`, `extendStaleAt`; throws on DB failure (callers own degradation).
+- `CachedForecastSource` implements `ForecastSource` (the "cached repository" kind): composes `ForecastCacheRepository` + upstream `ForecastSource` + `ModelClock`; owns availability policy — freshness rule, grace, serve-priority, degradation, the decision log line.
+- `WeatherService`: meteorology only (summarize/fog/beauty) over an injected `ForecastSource`; `getForecasts(pois) → Map<id, PoiForecast>` call-site contract unchanged.
+
+Behavioural contract (unchanged by the refactor):
 
 - Load cache rows for the requested POI ids in one query.
 - A row is **fresh** iff `now < staleAt` **and** `fetchedAt` is on the same UTC day as `now` (rollover invalidation).
