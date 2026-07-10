@@ -30,7 +30,7 @@ import type {
 } from '@prisma-next/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'sha256:5b7560591ee16833ad8365ce8d2ece976b73e35b67f9f4a475fab15b80dfc504'>;
+  StorageHashBase<'sha256:6db32dad783ebe8c5fe3b4002e502e8cac6ab10cc4b8dc4142c035372063be2a'>;
 export type ExecutionHash =
   ExecutionHashBase<'sha256:a81c880a30767326a86d331ce36566e1fc143e0a917406d2311c1c868356c441'>;
 export type ProfileHash =
@@ -55,7 +55,7 @@ export type FieldOutputTypes = {
     };
     readonly PoiForecast: {
       readonly poiId: CodecTypes['pg/int4@1']['output'];
-      readonly model: 'dwd_icon_d2' | 'dwd_icon_eu' | 'dwd_icon';
+      readonly model: CodecTypes['pg/text@1']['output'];
       readonly hourly: CodecTypes['pg/jsonb@1']['output'];
       readonly fetchedAt: CodecTypes['pg/timestamptz@1']['output'];
       readonly staleAt: CodecTypes['pg/timestamptz@1']['output'];
@@ -74,7 +74,7 @@ export type FieldInputTypes = {
     };
     readonly PoiForecast: {
       readonly poiId: CodecTypes['pg/int4@1']['input'];
-      readonly model: 'dwd_icon_d2' | 'dwd_icon_eu' | 'dwd_icon';
+      readonly model: CodecTypes['pg/text@1']['input'];
       readonly hourly: CodecTypes['pg/jsonb@1']['input'];
       readonly fetchedAt: CodecTypes['pg/timestamptz@1']['input'];
       readonly staleAt: CodecTypes['pg/timestamptz@1']['input'];
@@ -188,12 +188,6 @@ type ContractBase = Omit<
               ];
             };
           };
-          readonly valueSet: {
-            readonly IconModel: {
-              readonly kind: 'valueSet';
-              readonly values: readonly ['dwd_icon_d2', 'dwd_icon_eu', 'dwd_icon'];
-            };
-          };
         };
       };
     };
@@ -299,16 +293,6 @@ type ContractBase = Omit<
                 readonly staleAt: { readonly column: 'staleAt' };
               };
             };
-          };
-        };
-        readonly enum: {
-          readonly IconModel: {
-            readonly codecId: 'pg/text@1';
-            readonly members: readonly [
-              { readonly name: 'dwd_icon_d2'; readonly value: 'dwd_icon_d2' },
-              { readonly name: 'dwd_icon_eu'; readonly value: 'dwd_icon_eu' },
-              { readonly name: 'dwd_icon'; readonly value: 'dwd_icon' },
-            ];
           };
         };
       };

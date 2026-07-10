@@ -1,18 +1,19 @@
 import { db } from "@/prisma/db";
-import type { HourlyBlock } from "@/services/forecast-source";
+import { poiId, type HourlyBlock, type PoiId } from "@/services/forecast-source";
+import type { IconModel } from "@/services/model-clock";
 
 // PoiForecast row as the ORM returns it: timestamptz decodes to `Date`, not string.
 export type ForecastCacheRow = {
-	poiId: number;
-	model: string;
+	poiId: PoiId;
+	model: IconModel;
 	hourly: unknown;
 	fetchedAt: Date;
 	staleAt: Date;
 };
 
 export type ForecastCacheWrite = {
-	poiId: number;
-	model: string;
+	poiId: PoiId;
+	model: IconModel;
 	hourly: HourlyBlock;
 	fetchedAt: Date;
 	staleAt: Date;
@@ -25,14 +26,17 @@ export class ForecastCacheWriteError extends Error {
 }
 
 export interface ForecastCacheRepository {
-	findByPoiIds(ids: number[]): Promise<ForecastCacheRow[]>;
+	findByPoiIds(ids: PoiId[]): Promise<ForecastCacheRow[]>;
 	upsertMany(rows: ForecastCacheWrite[]): Promise<void>;
-	extendStaleAt(poiIds: number[], until: Date): Promise<void>;
+	extendStaleAt(poiIds: PoiId[], until: Date): Promise<void>;
 }
 
 export class PrismaForecastCacheRepository implements ForecastCacheRepository {
-	async findByPoiIds(ids: number[]): Promise<ForecastCacheRow[]> {
-		return await db.orm.public.PoiForecast.where((f) => f.poiId.in(ids)).all();
+	async findByPoiIds(ids: PoiId[]): Promise<ForecastCacheRow[]> {
+		const rows = await db.orm.public.PoiForecast.where((f) =>
+			f.poiId.in(ids),
+		).all();
+		return rows.map((r) => ({ ...r, poiId: poiId(r.poiId) }));
 	}
 
 	async upsertMany(rows: ForecastCacheWrite[]): Promise<void> {
@@ -48,7 +52,7 @@ export class PrismaForecastCacheRepository implements ForecastCacheRepository {
 		if (failed > 0) throw new ForecastCacheWriteError(failed);
 	}
 
-	async extendStaleAt(poiIds: number[], until: Date): Promise<void> {
+	async extendStaleAt(poiIds: PoiId[], until: Date): Promise<void> {
 		await db.orm.public.PoiForecast.where((f) => f.poiId.in(poiIds)).update({
 			staleAt: until,
 		});

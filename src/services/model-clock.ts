@@ -12,9 +12,13 @@ type ModelBbox = {
 	lonMax: number;
 };
 
-// From the meta.json endpoints above; highest resolution first, first
-// containing BBOX wins (icon_seamless order).
-const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox | null }> = [
+// Domain BBOXes transcribed from each model's meta.json `crs_wkt`
+// `BBOX[latMin, lonMin, latMax, lonMax]` (fetched 2026-07-10):
+//   https://api.open-meteo.com/data/dwd_icon_d2/static/meta.json → BBOX[43.18, -3.94, 58.08, 20.34] (~2 km)
+//   https://api.open-meteo.com/data/dwd_icon_eu/static/meta.json → BBOX[29.5, -23.5, 70.5, 62.5] (~7 km)
+//   https://api.open-meteo.com/data/dwd_icon/static/meta.json → global (~11 km; fallback in coveringModel)
+// Highest resolution first; first containing BBOX wins (icon_seamless order).
+const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox }> = [
 	{
 		model: "dwd_icon_d2",
 		bbox: { latMin: 43.18, latMax: 58.08, lonMin: -3.94, lonMax: 20.34 },
@@ -23,8 +27,6 @@ const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox | null }>
 		model: "dwd_icon_eu",
 		bbox: { latMin: 29.5, latMax: 70.5, lonMin: -23.5, lonMax: 62.5 },
 	},
-	// bbox null = terminal global fallback.
-	{ model: "dwd_icon", bbox: null },
 ];
 
 // Re-check window when a run is late or its meta is unknown.
@@ -46,7 +48,6 @@ type ModelMeta = {
 /** Covering model, seamless preference order: D2 → EU → global. Pure geometry. */
 export function coveringModel(latitude: number, longitude: number): IconModel {
 	for (const { model, bbox } of MODEL_DOMAINS) {
-		if (bbox == null) return model;
 		if (
 			latitude >= bbox.latMin &&
 			latitude <= bbox.latMax &&
@@ -56,7 +57,6 @@ export function coveringModel(latitude: number, longitude: number): IconModel {
 			return model;
 		}
 	}
-	// Unreachable: last domain is the global fallback.
 	return "dwd_icon";
 }
 
@@ -68,7 +68,11 @@ export interface ModelRunClock {
 
 /** Per-model run clock; one meta fetch per unique model (≤ 3 per cycle). */
 export class ModelClock implements ModelRunClock {
-	constructor(private readonly baseUrl: string = OPEN_METEO_DATA_URL) {}
+	#baseUrl: string;
+
+	constructor(baseUrl: string = OPEN_METEO_DATA_URL) {
+		this.#baseUrl = baseUrl;
+	}
 
 	/** Late run → grace-marked `now + ~10 min`; meta failure → `null` ("unknown",
 	 * treat as grace) — never a throw. */
@@ -80,7 +84,7 @@ export class ModelClock implements ModelRunClock {
 		const results = await Promise.all(
 			unique.map(async (model) => ({
 				model,
-				staleness: await this.fetchStaleAt(model),
+				staleness: await this.#fetchStaleAt(model),
 			})),
 		);
 		for (const { model, staleness } of results) {
@@ -89,10 +93,10 @@ export class ModelClock implements ModelRunClock {
 		return out;
 	}
 
-	private async fetchStaleAt(model: IconModel): Promise<ModelStaleness | null> {
+	async #fetchStaleAt(model: IconModel): Promise<ModelStaleness | null> {
 		let meta: ModelMeta;
 		try {
-			const res = await fetch(`${this.baseUrl}/${model}/static/meta.json`, {
+			const res = await fetch(`${this.#baseUrl}/${model}/static/meta.json`, {
 				// A cached meta.json would hide newly published runs.
 				cache: "no-store",
 			});

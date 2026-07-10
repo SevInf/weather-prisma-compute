@@ -2,6 +2,7 @@ import type {
 	ForecastPoint,
 	ForecastSource,
 	HourlyBlock,
+	PoiId,
 } from "@/services/forecast-source";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
@@ -11,14 +12,18 @@ type LocationResult = {
 };
 
 export class OpenMeteoForecastRepository implements ForecastSource {
-	constructor(private readonly baseUrl: string = OPEN_METEO_URL) {}
+	#baseUrl: string;
+
+	constructor(baseUrl: string = OPEN_METEO_URL) {
+		this.#baseUrl = baseUrl;
+	}
 
 	/** One batched request; `null` on any failure incl. count mismatch — never
 	 * cache or serve misaligned data. */
 	async hourlyBlocks(
 		points: ForecastPoint[],
-	): Promise<Map<number, HourlyBlock> | null> {
-		const url = this.buildRequestUrl(points);
+	): Promise<Map<PoiId, HourlyBlock> | null> {
+		const url = this.#buildRequestUrl(points);
 
 		let payload: LocationResult | LocationResult[];
 		try {
@@ -47,15 +52,15 @@ export class OpenMeteoForecastRepository implements ForecastSource {
 			return null;
 		}
 
-		const out = new Map<number, HourlyBlock>();
+		const out = new Map<PoiId, HourlyBlock>();
 		for (let i = 0; i < points.length; i++) {
 			out.set(points[i].id, items[i].hourly);
 		}
 		return out;
 	}
 
-	private buildRequestUrl(points: ForecastPoint[]): URL {
-		const url = new URL(this.baseUrl);
+	#buildRequestUrl(points: ForecastPoint[]): URL {
+		const url = new URL(this.#baseUrl);
 		url.searchParams.set(
 			"latitude",
 			points.map((p) => p.latitude.toFixed(5)).join(","),

@@ -11,7 +11,7 @@
 //   quadratic falloff cutting off at 4°C.
 
 import { cachedForecastSource } from "./cached-forecast-source";
-import type { ForecastSource, HourlyBlock } from "./forecast-source";
+import { poiId, type ForecastSource, type HourlyBlock } from "./forecast-source";
 
 export type ForecastInput = {
 	id: number;
@@ -60,20 +60,28 @@ const BEAUTY_HIGH_MIN = 80;
  * be swapped (or mocked in tests) without touching call sites.
  */
 export class WeatherService {
-	constructor(private readonly source: ForecastSource) {}
+	#source: ForecastSource;
+
+	constructor(source: ForecastSource) {
+		this.#source = source;
+	}
 
 	/** Missing entry = forecast unavailable; callers degrade, not fail. */
 	async getForecasts(pois: ForecastInput[]): Promise<Map<number, PoiForecast>> {
 		const out = new Map<number, PoiForecast>();
 		if (pois.length === 0) return out;
 
-		const blocks = await this.source.hourlyBlocks(
-			pois.map((p) => ({ id: p.id, latitude: p.latitude, longitude: p.longitude })),
+		const blocks = await this.#source.hourlyBlocks(
+			pois.map((p) => ({
+				id: poiId(p.id),
+				latitude: p.latitude,
+				longitude: p.longitude,
+			})),
 		);
 		if (!blocks) return out;
 
 		for (const p of pois) {
-			const hourly = blocks.get(p.id);
+			const hourly = blocks.get(poiId(p.id));
 			if (!hourly) continue;
 			out.set(p.id, summarize(hourly, p));
 		}

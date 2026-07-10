@@ -1,5 +1,13 @@
+declare const poiIdBrand: unique symbol;
+export type PoiId = number & { readonly [poiIdBrand]: true };
+
+/** Single construction point for branding raw ids at boundaries. */
+export function poiId(id: number): PoiId {
+	return id as PoiId;
+}
+
 export type ForecastPoint = {
-	id: number;
+	id: PoiId;
 	latitude: number;
 	longitude: number;
 };
@@ -14,5 +22,5 @@ export type HourlyBlock = {
 };
 
 export interface ForecastSource {
-	hourlyBlocks(points: ForecastPoint[]): Promise<Map<number, HourlyBlock> | null>;
+	hourlyBlocks(points: ForecastPoint[]): Promise<Map<PoiId, HourlyBlock> | null>;
 }

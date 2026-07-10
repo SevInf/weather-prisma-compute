@@ -9,11 +9,19 @@ model Poi {
   updatedAt temporal.updatedAt()
 }
 
+enum IconModel {
+  dwd_icon_d2
+  dwd_icon_eu
+  dwd_icon
+
+  @@type("pg/text@1")
+}
+
 // Per-POI forecast cache; refreshed when the covering ICON model publishes a new run.
 model PoiForecast {
-  poiId     Int      @id
-  poi       Poi      @relation(fields: [poiId], references: [id], onDelete: Cascade)
-  model     String
+  poiId     Int       @id
+  poi       Poi       @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  model     IconModel
   hourly    Json
   fetchedAt DateTime // drives UTC-day-rollover invalidation
   staleAt   DateTime // covering model's next-run instant
