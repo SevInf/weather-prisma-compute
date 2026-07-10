@@ -16,6 +16,6 @@ model PoiForecast {
   poi       Poi      @relation(fields: [poiId], references: [id], onDelete: Cascade)
   model     String // covering model slug: "dwd_icon_d2" | "dwd_icon_eu" | "dwd_icon"
   hourly    Json // raw Open-Meteo hourly block (time + series arrays)
-  fetchedAt DateTime // when the forecast was fetched (drives UTC-day-rollover invalidation)
+  fetchedAt DateTime // drives UTC-day-rollover invalidation
   staleAt   DateTime // when the covering model's next run is expected to be available
 }

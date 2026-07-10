@@ -58,8 +58,7 @@ export type ModelStaleness = {
 	graceExtended: boolean;
 };
 
-// Wire format of the fields we consume from `<model>/static/meta.json`.
-// Both are documented by Open-Meteo; times are epoch seconds.
+// Fields consumed from `<model>/static/meta.json`; times are epoch seconds.
 type ModelMeta = {
 	last_run_availability_time: number;
 	update_interval_seconds: number;
@@ -94,7 +93,6 @@ export class ModelClock {
 	constructor(private readonly baseUrl: string = OPEN_METEO_DATA_URL) {}
 
 	/**
-	 * Resolve the staleness verdict for every requested model in one batch.
 	 * Per model, `staleAt = last_run_availability_time + update_interval_seconds`
 	 * (the earliest instant the next run should be published), marked
 	 * `graceExtended: false`. When that instant is already past (the run is
@@ -147,7 +145,6 @@ export class ModelClock {
 
 		const staleAtMs = (availability + interval) * 1000;
 		const now = Date.now();
-		// Next run is overdue but not published yet — extend under grace.
 		if (staleAtMs <= now) {
 			return { staleAt: new Date(now + GRACE_MS), graceExtended: true };
 		}

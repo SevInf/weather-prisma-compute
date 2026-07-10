@@ -119,8 +119,6 @@ export class WeatherService {
 		const rows = await this.loadCacheRows(pois.map((p) => p.id));
 		const dbHealthy = rows !== null;
 
-		// Partition cached rows by the freshness rule; a malformed cached
-		// `hourly` payload is treated as a missing row.
 		const cachedFresh = new Map<number, HourlyBlock>();
 		const cachedExpired = new Map<number, HourlyBlock>();
 		for (const p of pois) {
@@ -132,8 +130,6 @@ export class WeatherService {
 		}
 		const toRefresh = pois.filter((p) => !cachedFresh.has(p.id));
 
-		// Attribute each refresh candidate to its covering model and resolve the
-		// per-model staleness clock (at most one meta fetch per unique model).
 		const modelByPoi = new Map<number, IconModel>();
 		let staleAtByModel = new Map<IconModel, ModelStaleness | null>();
 		if (toRefresh.length > 0) {
@@ -159,7 +155,6 @@ export class WeatherService {
 			}
 		}
 
-		// One batched upstream call for everything that must be refetched.
 		const fetched =
 			toFetch.length > 0 ? await this.fetchHourlyBlocks(toFetch) : null;
 
