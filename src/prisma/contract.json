@@ -7,6 +7,10 @@
     "poi": {
       "model": "Poi",
       "namespace": "public"
+    },
+    "poiForecast": {
+      "model": "PoiForecast",
+      "namespace": "public"
     }
   },
   "domain": {
@@ -83,6 +87,83 @@
               "namespaceId": "public",
               "table": "poi"
             }
+          },
+          "PoiForecast": {
+            "fields": {
+              "fetchedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz@1",
+                  "kind": "scalar"
+                }
+              },
+              "hourly": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
+              "model": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "poiId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "staleAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "poi": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "poiId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Poi",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "fetchedAt": {
+                  "column": "fetchedAt"
+                },
+                "hourly": {
+                  "column": "hourly"
+                },
+                "model": {
+                  "column": "model"
+                },
+                "poiId": {
+                  "column": "poiId"
+                },
+                "staleAt": {
+                  "column": "staleAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "poiForecast"
+            }
           }
         }
       }
@@ -142,6 +223,63 @@
                 ]
               },
               "uniques": []
+            },
+            "poiForecast": {
+              "columns": {
+                "fetchedAt": {
+                  "codecId": "pg/timestamptz@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "hourly": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": false
+                },
+                "model": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "poiId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "staleAt": {
+                  "codecId": "pg/timestamptz@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "constraint": true,
+                  "index": true,
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "poiId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "poiForecast"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "poi"
+                  }
+                }
+              ],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "poiId"
+                ]
+              },
+              "uniques": []
             }
           }
         },
@@ -149,7 +287,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "sha256:eecde426704ea1d784f61e03e451b8afb1c012b44a676cd5efc164c37f6c5ecd"
+    "storageHash": "sha256:6db32dad783ebe8c5fe3b4002e502e8cac6ab10cc4b8dc4142c035372063be2a"
   },
   "execution": {
     "executionHash": "sha256:a81c880a30767326a86d331ce36566e1fc143e0a917406d2311c1c868356c441",

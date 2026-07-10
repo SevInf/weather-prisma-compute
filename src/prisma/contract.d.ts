@@ -30,7 +30,7 @@ import type {
 } from '@prisma-next/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'sha256:eecde426704ea1d784f61e03e451b8afb1c012b44a676cd5efc164c37f6c5ecd'>;
+  StorageHashBase<'sha256:6db32dad783ebe8c5fe3b4002e502e8cac6ab10cc4b8dc4142c035372063be2a'>;
 export type ExecutionHash =
   ExecutionHashBase<'sha256:a81c880a30767326a86d331ce36566e1fc143e0a917406d2311c1c868356c441'>;
 export type ProfileHash =
@@ -53,6 +53,13 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz@1']['output'];
     };
+    readonly PoiForecast: {
+      readonly poiId: CodecTypes['pg/int4@1']['output'];
+      readonly model: CodecTypes['pg/text@1']['output'];
+      readonly hourly: CodecTypes['pg/jsonb@1']['output'];
+      readonly fetchedAt: CodecTypes['pg/timestamptz@1']['output'];
+      readonly staleAt: CodecTypes['pg/timestamptz@1']['output'];
+    };
   };
 };
 export type FieldInputTypes = {
@@ -64,6 +71,13 @@ export type FieldInputTypes = {
       readonly longitude: CodecTypes['pg/float8@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz@1']['input'];
+    };
+    readonly PoiForecast: {
+      readonly poiId: CodecTypes['pg/int4@1']['input'];
+      readonly model: CodecTypes['pg/text@1']['input'];
+      readonly hourly: CodecTypes['pg/jsonb@1']['input'];
+      readonly fetchedAt: CodecTypes['pg/timestamptz@1']['input'];
+      readonly staleAt: CodecTypes['pg/timestamptz@1']['input'];
     };
   };
 };
@@ -125,6 +139,54 @@ type ContractBase = Omit<
               indexes: readonly [];
               foreignKeys: readonly [];
             };
+            readonly poiForecast: {
+              columns: {
+                readonly poiId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly model: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly hourly: {
+                  readonly nativeType: 'jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: false;
+                };
+                readonly fetchedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz@1';
+                  readonly nullable: false;
+                };
+                readonly staleAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['poiId'] };
+              uniques: readonly [];
+              indexes: readonly [];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'poiForecast';
+                    readonly columns: readonly ['poiId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'poi';
+                    readonly columns: readonly ['id'];
+                  };
+                  readonly constraint: true;
+                  readonly index: true;
+                },
+              ];
+            };
           };
         };
       };
@@ -137,6 +199,10 @@ type ContractBase = Omit<
   readonly targetFamily: 'sql';
   readonly roots: {
     readonly poi: { readonly namespace: 'public' & NamespaceId; readonly model: 'Poi' };
+    readonly poiForecast: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'PoiForecast';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -180,6 +246,51 @@ type ContractBase = Omit<
                 readonly longitude: { readonly column: 'longitude' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly PoiForecast: {
+            readonly fields: {
+              readonly poiId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly model: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly hourly: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
+              readonly fetchedAt: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/timestamptz@1' };
+              };
+              readonly staleAt: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/timestamptz@1' };
+              };
+            };
+            readonly relations: {
+              readonly poi: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Poi' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['poiId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'poiForecast';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly poiId: { readonly column: 'poiId' };
+                readonly model: { readonly column: 'model' };
+                readonly hourly: { readonly column: 'hourly' };
+                readonly fetchedAt: { readonly column: 'fetchedAt' };
+                readonly staleAt: { readonly column: 'staleAt' };
               };
             };
           };
