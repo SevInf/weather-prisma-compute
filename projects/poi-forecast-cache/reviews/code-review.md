@@ -4,8 +4,8 @@
 
 ## Summary
 
-- **Current verdict:** D3 R2 — SATISFIED (slice close)
-- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring)
+- **Current verdict:** D4 R1 — SATISFIED (slice re-closed)
+- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package)
 - **DoD scoreboard totals:** 7 PASS / 0 FAIL / 0 NOT VERIFIED
 - **Open findings:** 0 (F1, F2 resolved at `35f3e1e`)
 - **Open escalations:** 0
@@ -20,7 +20,7 @@
 | DoD-2 | Past `staleAt`, next request re-fetches; model-run identity advances | D3 | PASS | Code: expired → `toRefresh` → `toFetch` → upsert advances `fetchedAt`/`staleAt` (`weather-service.ts:130-166, 279-309`); manual staleAt reconciliation (Munich 13:27:22Z = availability+interval) |
 | DoD-3 | Truncated cache table → same response shape, correct forecasts (cold path) | D3 | PASS | Manual scenario 2 (cleared table → "refreshed 2 of 2", shape equality verified programmatically) + missing-row code path |
 | DoD-4 | New POI gets forecast on next request without waiting for other rows | D3 | PASS | Code: rowless POI never grace-served, always lands in `toFetch` batched with other stale POIs (`weather-service.ts:150-158`) |
-| DoD-5 | Contract migration applies via standard PN flow, no manual DDL | D1 | PASS | Commit `0149750` (contract + emitted artefacts) + `f9188a7` (refs advanced by `db update`); PN CLI only, flow choice recorded per brief; refs/db.contract.json == src/prisma/contract.json (verified on disk) |
+| DoD-5 | Contract migration applies via standard PN flow, no manual DDL | D1/D4 | PASS | Commit `0149750` + `f9188a7` (D1: `db update`, PN CLI only). Evidence widened at D4 (`31c40ac`): replayable planner-rendered history — baseline `null → eecde426` (create `poi`) + edge `eecde426 → 6db32dad` (create `poiForecast` + index + cascade FK, matching D1's applied DDL); all additive, zero placeholders; `migration status` clean, DB schema unchanged |
 | DoD-6 | `bun run build` (incl. `contract emit`) passes | D1–D3 | PASS | Build green at `f9188a7`, `bf64ae9`, and final `1d7ab80` (implementer reports; no reason to distrust) |
 | SL-1  | Manual verification log attached (2× GET cache-hit; post-truncate cold path) | D3 | PASS | Both scenarios recorded with exact log lines, status codes, programmatic shape check, staleAt reconciliation (implementer report D3 R1). Orchestrator: attach the log to the PR body at open time |
 
@@ -118,6 +118,18 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 **Findings:** none new; F1, F2 closed.
 
 **For orchestrator:** slice DoD met — proceed to PR open (attach SL-1 manual log to the PR body; spec amendment already recorded).
+
+### D4 R1 — SATISFIED (slice re-closed)
+
+**Scope:** D4 migration-package. Commit `31c40ac` (12 files, all under `migrations/app/`).
+
+**Tasks:** all four completed-when conditions clean (committed packages additive-only — destructive sweep zero hits; `migration status`/`db verify`/build reported green with before/after table-set unchanged; commands, origin/destination hashes `null→eecde426→6db32dad`, and five CLI-vs-skill deviations recorded). Edge migration ops match D1's applied DDL; refs byte-identical to `f9188a7` despite the delete/set round-trip (verified). Worktree `src/` clean — the transient emit-swap left no residue.
+
+**AC delta:** DoD-5 evidence widened (real replayable history). Totals hold at 7 PASS / 0 FAIL / 0 NOT VERIFIED. Transient-ID scan: zero hits.
+
+**Findings:** none.
+
+**For orchestrator:** Flag A accepted — committed-end-state reading is right (scope's concern is the PR's contract surface; byte-exact restore verified on disk; the only CLI-sanctioned way to anchor main's contract, and loudly flagged). Flag B accepted — the baseline is PN's structural precondition for a non-null-origin edge (`HASH_NOT_IN_GRAPH` otherwise) and directly serves the brief's replayability purpose. D1's item-for-user (no migration package) is now resolved. Route the five CLI-vs-skill deviations to `learnings.md` alongside the earlier PN gotchas — several look upstream-worthy (`--from ./path` dead vs help text; `migration new` silently ignoring `--from`; dirty-ref auto-baseline anchored at destination producing a destructive scratch plan).
 
 ## Orchestrator notes
 

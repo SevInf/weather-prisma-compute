@@ -25,10 +25,18 @@
 - **Hands to:** Slice DoD met — all six project-DoD conditions + the manual verification log (slice carries the full project DoD; single-slice project).
 - **Focus:** `src/services/weather-service.ts` + `src/app/api/pois/route.ts` wiring and the edge-case dispositions from the spec table (meta-endpoint-down grace, response-count-mismatch skip-upsert). Out: contract changes, UI, DELETE route.
 
+### Dispatch 4: migration-package _(added post-PR-open by operator decision, 2026-07-10)_
+
+- **Outcome:** A committed Prisma Next migration package under `migrations/` representing the main → branch contract transition (create `poiForecast`), generated via the standard PN migration flow (`migration plan` / `migration new` per `.agents/skills/prisma-next-migrations/SKILL.md`); `prisma-next migration status` reports clean (the already-updated dev DB recognizes the migration as applied — via the flow PN prescribes for a DB that already matches the destination, e.g. sign/resolve, no manual DDL); `nix develop -c bun run build` passes.
+- **Builds on:** D1's applied contract state (the dev DB already carries the target schema via `db update`; the migration must reconcile with, not re-apply over, that state).
+- **Hands to:** Slice DoD unchanged plus a replayable migration history for non-dev environments — closes the reviewer's D1 item-for-user ("no migration package").
+- **Focus:** `migrations/**` + any ref artefacts the PN flow writes. Out: contract source (unchanged), all runtime code.
+
 ## Sizing
 
-Dispatch-INVEST: all three pass. D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate). Non-linearity is confined to D3's dual dependency, surfaced above.
+Dispatch-INVEST: all four pass. D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
 
 ## Open items
 
-- [ ] Dev `DATABASE_URL` (no `.env` in worktree; no Postgres in flake or on host) — operator to provide/confirm before D1's apply step and D3's manual verification.
+- [x] Dev `DATABASE_URL` — provided by operator 2026-07-10; consumed by D1/D3.
+- [ ] D4 note: dev DB already matches the destination contract (D1's `db update`); the migration package must be reconciled (sign/resolve), not blindly re-applied.
