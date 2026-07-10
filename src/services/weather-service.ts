@@ -1,8 +1,11 @@
 // WeatherService — service-oriented adapter over the Open-Meteo ICON
-// forecast API. Batches every POI into a single HTTP request via the
-// multi-location `latitude=lat1,lat2&longitude=lng1,lng2` syntax, then
-// derives a fog probability and a "beautiful sunrise/sunset" flag for
-// each POI.
+// forecast API, fronted by a per-POI Postgres read-through cache. Fresh
+// cache rows serve without an upstream forecast call; stale or missing
+// POIs are batched into a single HTTP request via the multi-location
+// `latitude=lat1,lat2&longitude=lng1,lng2` syntax and the raw hourly
+// blocks are cached until the covering ICON model's next run. Fog
+// probability and the "beautiful sunrise/sunset" flag are derived
+// per-request from the (cached or fetched) hourly block.
 //
 // References:
 // - Open-Meteo DWD ICON API: https://open-meteo.com/en/docs/dwd-api
@@ -13,7 +16,15 @@
 //   Meteorol. Climatol., 46(8): 1141–1168). We model probability as a
 //   quadratic falloff cutting off at 4°C.
 
+import { db } from "@/prisma/db";
+import { coveringModel, modelClock, type IconModel } from "./model-clock";
+
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
+
+// When a model's meta.json is unavailable the clock cannot say when the next
+// run lands; trust affected cache rows for a short window instead of
+// re-checking on every request.
+const META_GRACE_MS = 10 * 60 * 1000;
 
 export type ForecastInput = {
 	id: number;
@@ -69,6 +80,16 @@ type LocationResult = {
 	hourly: HourlyBlock;
 };
 
+// Structural view of a `PoiForecast` cache row as the ORM lane returns it
+// (timestamptz columns decode to `Date`).
+type CachedForecastRow = {
+	poiId: number;
+	model: string;
+	hourly: unknown;
+	fetchedAt: Date;
+	staleAt: Date;
+};
+
 /**
  * Service encapsulating all weather-forecast concerns. Consumers depend on
  * this interface instead of the Open-Meteo wire format, so the provider can
@@ -78,15 +99,141 @@ export class WeatherService {
 	constructor(private readonly baseUrl: string = OPEN_METEO_URL) {}
 
 	/**
-	 * Fetch a forecast for every POI in a single Open-Meteo request and return
-	 * a `Map<poiId, PoiForecast>`. If the network call fails, the returned map
-	 * is empty — callers should treat missing entries as "forecast unavailable"
-	 * rather than failing the request.
+	 * Resolve a forecast for every POI and return a `Map<poiId, PoiForecast>`.
+	 * Missing entries mean "forecast unavailable" — callers should degrade
+	 * rather than fail the request.
+	 *
+	 * Read-through cached: a cache row is fresh while `now < staleAt` and it
+	 * was fetched on the current UTC day; fresh rows serve without an upstream
+	 * forecast call. Stale/missing POIs are refetched in one batched call and
+	 * upserted with a `staleAt` from their covering model's run clock. A DB
+	 * failure degrades to the direct fetch; an upstream failure serves expired
+	 * rows when present.
 	 */
 	async getForecasts(pois: ForecastInput[]): Promise<Map<number, PoiForecast>> {
 		const out = new Map<number, PoiForecast>();
 		if (pois.length === 0) return out;
+		const now = new Date();
 
+		const rows = await this.loadCacheRows(pois.map((p) => p.id));
+		const dbHealthy = rows !== null;
+
+		// Partition cached rows by the freshness rule; a malformed cached
+		// `hourly` payload is treated as a missing row.
+		const cachedFresh = new Map<number, HourlyBlock>();
+		const cachedExpired = new Map<number, HourlyBlock>();
+		for (const p of pois) {
+			const row = rows?.get(p.id);
+			if (!row) continue;
+			const hourly = parseHourlyBlock(row.hourly);
+			if (!hourly) continue;
+			(isFresh(row, now) ? cachedFresh : cachedExpired).set(p.id, hourly);
+		}
+		const toRefresh = pois.filter((p) => !cachedFresh.has(p.id));
+
+		// Attribute each refresh candidate to its covering model and resolve the
+		// per-model staleness clock (at most one meta fetch per unique model).
+		const modelByPoi = new Map<number, IconModel>();
+		let staleAtByModel = new Map<IconModel, Date | null>();
+		if (toRefresh.length > 0) {
+			for (const p of toRefresh) {
+				modelByPoi.set(p.id, coveringModel(p.latitude, p.longitude));
+			}
+			staleAtByModel = await modelClock.nextStaleAt(modelByPoi.values());
+		}
+
+		// Meta unknown (endpoint down) + expired row present → treat as "no new
+		// run": serve the row under grace and skip the upstream refetch. POIs
+		// without a row must still fetch regardless of meta health.
+		const graceServed = new Set<number>();
+		const toFetch: ForecastInput[] = [];
+		for (const p of toRefresh) {
+			const model = modelByPoi.get(p.id);
+			const metaKnown = model != null && staleAtByModel.get(model) != null;
+			if (!metaKnown && cachedExpired.has(p.id)) {
+				graceServed.add(p.id);
+			} else {
+				toFetch.push(p);
+			}
+		}
+
+		// One batched upstream call for everything that must be refetched.
+		const fetched =
+			toFetch.length > 0 ? await this.fetchHourlyBlocks(toFetch) : null;
+
+		if (dbHealthy && fetched && fetched.size > 0) {
+			await this.upsertForecasts(toFetch, fetched, modelByPoi, staleAtByModel, now);
+		}
+		if (dbHealthy && graceServed.size > 0) {
+			await this.extendGrace(
+				[...graceServed],
+				new Date(now.getTime() + META_GRACE_MS),
+			);
+		}
+
+		// Serve, best source first: fresh cache → fresh fetch → expired row
+		// (grace-served, or upstream fallback per the degradation contract).
+		let expiredFallback = 0;
+		for (const p of pois) {
+			const hourly =
+				cachedFresh.get(p.id) ?? fetched?.get(p.id) ?? cachedExpired.get(p.id);
+			if (!hourly) continue;
+			if (
+				!cachedFresh.has(p.id) &&
+				!fetched?.has(p.id) &&
+				!graceServed.has(p.id)
+			) {
+				expiredFallback++;
+			}
+			out.set(p.id, this.summarize({ hourly }, p));
+		}
+
+		// One decision line per request cycle.
+		const n = pois.length;
+		if (cachedFresh.size === n) {
+			console.log(`forecast cache: all ${n} fresh`);
+		} else {
+			const parts = [`refreshed ${fetched?.size ?? 0} of ${n} POIs`];
+			if (cachedFresh.size > 0) parts.push(`${cachedFresh.size} fresh`);
+			if (graceServed.size > 0) {
+				parts.push(`${graceServed.size} grace-served (meta unavailable)`);
+			}
+			if (expiredFallback > 0) {
+				parts.push(`${expiredFallback} expired served (upstream failed)`);
+			}
+			if (n - out.size > 0) parts.push(`${n - out.size} unavailable`);
+			if (!dbHealthy) parts.push("db unavailable, direct fetch");
+			console.log(`forecast cache: ${parts.join(", ")}`);
+		}
+
+		return out;
+	}
+
+	/** Load cache rows for the given POI ids; `null` signals a DB failure. */
+	private async loadCacheRows(
+		ids: number[],
+	): Promise<Map<number, CachedForecastRow> | null> {
+		try {
+			const rows = await db.orm.public.PoiForecast.where((f) =>
+				f.poiId.in(ids),
+			).all();
+			const out = new Map<number, CachedForecastRow>();
+			for (const row of rows) out.set(row.poiId, row);
+			return out;
+		} catch (err) {
+			console.warn("forecast cache read failed, using direct fetch:", err);
+			return null;
+		}
+	}
+
+	/**
+	 * Fetch the raw hourly block for every POI in a single Open-Meteo request.
+	 * Returns `null` on any failure — including a location-count mismatch,
+	 * whose misaligned data must never be cached or served.
+	 */
+	private async fetchHourlyBlocks(
+		pois: ForecastInput[],
+	): Promise<Map<number, HourlyBlock> | null> {
 		const url = this.buildRequestUrl(pois);
 
 		let payload: LocationResult | LocationResult[];
@@ -99,12 +246,12 @@ export class WeatherService {
 			});
 			if (!res.ok) {
 				console.warn(`Open-Meteo returned ${res.status}`);
-				return out;
+				return null;
 			}
 			payload = (await res.json()) as LocationResult | LocationResult[];
 		} catch (err) {
 			console.warn("Open-Meteo fetch failed:", err);
-			return out;
+			return null;
 		}
 
 		// Multi-location responses are arrays; single-location is an object.
@@ -113,13 +260,63 @@ export class WeatherService {
 			console.warn(
 				`Open-Meteo returned ${items.length} locations for ${pois.length} POIs`,
 			);
-			return out;
+			return null;
 		}
 
+		const out = new Map<number, HourlyBlock>();
 		for (let i = 0; i < pois.length; i++) {
-			out.set(pois[i].id, this.summarize(items[i], pois[i]));
+			out.set(pois[i].id, items[i].hourly);
 		}
 		return out;
+	}
+
+	/**
+	 * Upsert one cache row per refetched POI. `staleAt` comes from the POI's
+	 * covering model clock; an unknown clock (meta fetch failed) falls back to
+	 * a short grace window. Write failures are logged, never thrown — the
+	 * fetched data still serves this request.
+	 */
+	private async upsertForecasts(
+		refetched: ForecastInput[],
+		fetched: Map<number, HourlyBlock>,
+		modelByPoi: Map<number, IconModel>,
+		staleAtByModel: Map<IconModel, Date | null>,
+		now: Date,
+	): Promise<void> {
+		const grace = new Date(now.getTime() + META_GRACE_MS);
+		const writes = refetched.flatMap((p) => {
+			const hourly = fetched.get(p.id);
+			const model = modelByPoi.get(p.id);
+			if (!hourly || !model) return [];
+			const patch = {
+				model,
+				hourly,
+				fetchedAt: now,
+				staleAt: staleAtByModel.get(model) ?? grace,
+			};
+			return [
+				db.orm.public.PoiForecast.upsert({
+					create: { poiId: p.id, ...patch },
+					update: patch,
+				}),
+			];
+		});
+		const results = await Promise.allSettled(writes);
+		const failed = results.filter((r) => r.status === "rejected").length;
+		if (failed > 0) {
+			console.warn(`forecast cache: ${failed} upsert(s) failed, serving uncached`);
+		}
+	}
+
+	/** Push `staleAt` forward on rows served under grace (meta unavailable). */
+	private async extendGrace(poiIds: number[], staleAt: Date): Promise<void> {
+		try {
+			await db.orm.public.PoiForecast.where((f) => f.poiId.in(poiIds)).update({
+				staleAt,
+			});
+		} catch (err) {
+			console.warn("forecast cache: grace extension failed:", err);
+		}
 	}
 
 	private buildRequestUrl(pois: ForecastInput[]): URL {
@@ -228,6 +425,45 @@ function beautyAt(
 		cloudCoverMid: mid,
 		cloudCoverHigh: high,
 	};
+}
+
+// A cached row serves only while the covering model's run is current AND the
+// row was fetched on the current UTC day: sunrise targets are computed per
+// request, and a fetch from yesterday cannot guarantee its 2-day forecast
+// window still reaches tomorrow's sunrise.
+function isFresh(row: CachedForecastRow, now: Date): boolean {
+	const staleAtMs = row.staleAt.getTime();
+	const fetchedMs = row.fetchedAt.getTime();
+	if (!Number.isFinite(staleAtMs) || !Number.isFinite(fetchedMs)) return false;
+	if (now.getTime() >= staleAtMs) return false;
+	return (
+		new Date(fetchedMs).toISOString().slice(0, 10) ===
+		now.toISOString().slice(0, 10)
+	);
+}
+
+function isNumberOrNullArray(v: unknown): v is Array<number | null> {
+	return Array.isArray(v) && v.every((x) => x === null || typeof x === "number");
+}
+
+// Validate a cached jsonb payload back into an HourlyBlock; anything
+// malformed is treated as a missing cache row.
+function parseHourlyBlock(value: unknown): HourlyBlock | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+	const b = value as Record<string, unknown>;
+	if (!Array.isArray(b.time) || !b.time.every((t) => typeof t === "string")) {
+		return null;
+	}
+	if (
+		!isNumberOrNullArray(b.temperature_2m) ||
+		!isNumberOrNullArray(b.dew_point_2m) ||
+		!isNumberOrNullArray(b.cloud_cover_low) ||
+		!isNumberOrNullArray(b.cloud_cover_mid) ||
+		!isNumberOrNullArray(b.cloud_cover_high)
+	) {
+		return null;
+	}
+	return value as HourlyBlock;
 }
 
 // Open-Meteo emits naive ISO timestamps (no `Z`) but they are UTC when we
