@@ -44,7 +44,19 @@ const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox | null }>
 
 // When a model's next run is overdue (the computed availability instant is
 // already in the past), re-check again shortly instead of on every request.
-const GRACE_MS = 10 * 60 * 1000;
+// Shared with consumers so "unknown" results get the same grace window.
+export const GRACE_MS = 10 * 60 * 1000;
+
+/**
+ * A model's staleness verdict. `graceExtended: false` means `staleAt` is the
+ * real next-run availability instant; `true` means the run is late and
+ * `staleAt` is a short re-check window — consumers with data on hand should
+ * extend its life rather than refetch (only rowless consumers need to fetch).
+ */
+export type ModelStaleness = {
+	staleAt: Date;
+	graceExtended: boolean;
+};
 
 // Wire format of the fields we consume from `<model>/static/meta.json`.
 // Both are documented by Open-Meteo; times are epoch seconds.
@@ -82,32 +94,33 @@ export class ModelClock {
 	constructor(private readonly baseUrl: string = OPEN_METEO_DATA_URL) {}
 
 	/**
-	 * Resolve the staleness instant for every requested model in one batch.
+	 * Resolve the staleness verdict for every requested model in one batch.
 	 * Per model, `staleAt = last_run_availability_time + update_interval_seconds`
-	 * (the earliest instant the next run should be published). When that
-	 * instant is already past (the run is late), returns `now + ~10 min` so
-	 * callers re-check soon instead of hammering upstream. A failed or
-	 * malformed meta fetch yields `null` ("unknown") for that model — never
-	 * a throw — which callers should treat the same as a grace window.
+	 * (the earliest instant the next run should be published), marked
+	 * `graceExtended: false`. When that instant is already past (the run is
+	 * late), returns `now + ~10 min` marked `graceExtended: true` so callers
+	 * can extend existing data instead of refetching. A failed or malformed
+	 * meta fetch yields `null` ("unknown") for that model — never a throw —
+	 * which callers should treat the same as a grace extension.
 	 */
 	async nextStaleAt(
 		models: Iterable<IconModel>,
-	): Promise<Map<IconModel, Date | null>> {
+	): Promise<Map<IconModel, ModelStaleness | null>> {
 		const unique = [...new Set(models)];
-		const out = new Map<IconModel, Date | null>();
+		const out = new Map<IconModel, ModelStaleness | null>();
 		const results = await Promise.all(
 			unique.map(async (model) => ({
 				model,
-				staleAt: await this.fetchStaleAt(model),
+				staleness: await this.fetchStaleAt(model),
 			})),
 		);
-		for (const { model, staleAt } of results) {
-			out.set(model, staleAt);
+		for (const { model, staleness } of results) {
+			out.set(model, staleness);
 		}
 		return out;
 	}
 
-	private async fetchStaleAt(model: IconModel): Promise<Date | null> {
+	private async fetchStaleAt(model: IconModel): Promise<ModelStaleness | null> {
 		let meta: ModelMeta;
 		try {
 			const res = await fetch(`${this.baseUrl}/${model}/static/meta.json`, {
@@ -135,8 +148,10 @@ export class ModelClock {
 		const staleAtMs = (availability + interval) * 1000;
 		const now = Date.now();
 		// Next run is overdue but not published yet — extend under grace.
-		if (staleAtMs <= now) return new Date(now + GRACE_MS);
-		return new Date(staleAtMs);
+		if (staleAtMs <= now) {
+			return { staleAt: new Date(now + GRACE_MS), graceExtended: true };
+		}
+		return { staleAt: new Date(staleAtMs), graceExtended: false };
 	}
 }
 

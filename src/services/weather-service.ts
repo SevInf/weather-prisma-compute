@@ -17,14 +17,15 @@
 //   quadratic falloff cutting off at 4°C.
 
 import { db } from "@/prisma/db";
-import { coveringModel, modelClock, type IconModel } from "./model-clock";
+import {
+	coveringModel,
+	GRACE_MS,
+	modelClock,
+	type IconModel,
+	type ModelStaleness,
+} from "./model-clock";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
-
-// When a model's meta.json is unavailable the clock cannot say when the next
-// run lands; trust affected cache rows for a short window instead of
-// re-checking on every request.
-const META_GRACE_MS = 10 * 60 * 1000;
 
 export type ForecastInput = {
 	id: number;
@@ -134,7 +135,7 @@ export class WeatherService {
 		// Attribute each refresh candidate to its covering model and resolve the
 		// per-model staleness clock (at most one meta fetch per unique model).
 		const modelByPoi = new Map<number, IconModel>();
-		let staleAtByModel = new Map<IconModel, Date | null>();
+		let staleAtByModel = new Map<IconModel, ModelStaleness | null>();
 		if (toRefresh.length > 0) {
 			for (const p of toRefresh) {
 				modelByPoi.set(p.id, coveringModel(p.latitude, p.longitude));
@@ -142,15 +143,16 @@ export class WeatherService {
 			staleAtByModel = await modelClock.nextStaleAt(modelByPoi.values());
 		}
 
-		// Meta unknown (endpoint down) + expired row present → treat as "no new
-		// run": serve the row under grace and skip the upstream refetch. POIs
-		// without a row must still fetch regardless of meta health.
+		// No new run to fetch — either the meta endpoint is down (null) or the
+		// run is late (grace-extended). An expired row then serves under grace
+		// with no upstream refetch; POIs without a row must still fetch.
 		const graceServed = new Set<number>();
 		const toFetch: ForecastInput[] = [];
 		for (const p of toRefresh) {
 			const model = modelByPoi.get(p.id);
-			const metaKnown = model != null && staleAtByModel.get(model) != null;
-			if (!metaKnown && cachedExpired.has(p.id)) {
+			const staleness = model != null ? (staleAtByModel.get(model) ?? null) : null;
+			const newRunAvailable = staleness != null && !staleness.graceExtended;
+			if (!newRunAvailable && cachedExpired.has(p.id)) {
 				graceServed.add(p.id);
 			} else {
 				toFetch.push(p);
@@ -167,7 +169,7 @@ export class WeatherService {
 		if (dbHealthy && graceServed.size > 0) {
 			await this.extendGrace(
 				[...graceServed],
-				new Date(now.getTime() + META_GRACE_MS),
+				new Date(now.getTime() + GRACE_MS),
 			);
 		}
 
@@ -196,7 +198,7 @@ export class WeatherService {
 			const parts = [`refreshed ${fetched?.size ?? 0} of ${n} POIs`];
 			if (cachedFresh.size > 0) parts.push(`${cachedFresh.size} fresh`);
 			if (graceServed.size > 0) {
-				parts.push(`${graceServed.size} grace-served (meta unavailable)`);
+				parts.push(`${graceServed.size} grace-served (no new run)`);
 			}
 			if (expiredFallback > 0) {
 				parts.push(`${expiredFallback} expired served (upstream failed)`);
@@ -280,10 +282,10 @@ export class WeatherService {
 		refetched: ForecastInput[],
 		fetched: Map<number, HourlyBlock>,
 		modelByPoi: Map<number, IconModel>,
-		staleAtByModel: Map<IconModel, Date | null>,
+		staleAtByModel: Map<IconModel, ModelStaleness | null>,
 		now: Date,
 	): Promise<void> {
-		const grace = new Date(now.getTime() + META_GRACE_MS);
+		const grace = new Date(now.getTime() + GRACE_MS);
 		const writes = refetched.flatMap((p) => {
 			const hourly = fetched.get(p.id);
 			const model = modelByPoi.get(p.id);
@@ -292,7 +294,7 @@ export class WeatherService {
 				model,
 				hourly,
 				fetchedAt: now,
-				staleAt: staleAtByModel.get(model) ?? grace,
+				staleAt: staleAtByModel.get(model)?.staleAt ?? grace,
 			};
 			return [
 				db.orm.public.PoiForecast.upsert({
@@ -308,7 +310,7 @@ export class WeatherService {
 		}
 	}
 
-	/** Push `staleAt` forward on rows served under grace (meta unavailable). */
+	/** Push `staleAt` forward on rows served under grace (no new run to fetch). */
 	private async extendGrace(poiIds: number[], staleAt: Date): Promise<void> {
 		try {
 			await db.orm.public.PoiForecast.where((f) => f.poiId.in(poiIds)).update({
