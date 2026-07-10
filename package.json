@@ -15,9 +15,11 @@
 	},
 	"dependencies": {
 		"@prisma-next/postgres": "0.14.0",
+		"better-auth": "^1.6.23",
 		"dotenv": "^17.4.2",
 		"maplibre-gl": "^5.24.0",
 		"next": "^16.2.10",
+		"pg": "^8.22.0",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",
 		"react-map-gl": "^8.1.1",
@@ -25,6 +27,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^25.9.1",
+		"@types/pg": "^8.20.0",
 		"@types/react": "^19.2.17",
 		"@types/react-dom": "^19.2.3",
 		"@types/suncalc": "^1.9.2",
