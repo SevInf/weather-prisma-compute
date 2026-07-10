@@ -1,16 +1,14 @@
 import { betterAuth } from "better-auth";
-import { Pool } from "pg";
+import { prismaNextAdapter } from "@/lib/auth-adapter";
 
-// Next.js dev-server fast refresh can re-evaluate this module on every change,
-// which would otherwise leak a fresh pg.Pool per reload. Cache the auth
-// instance (which owns the pool) on `globalThis` in non-production builds so
-// all callers share one pool. Same pattern as `src/prisma/db.ts`.
+// Next.js dev-server fast refresh can re-evaluate this module on every change.
+// Cache the auth instance on `globalThis` in non-production builds so all
+// callers share one instance. The underlying database connection is the
+// Prisma Next client from `src/prisma/db.ts`, which carries its own cache.
 
 const createAuth = () =>
 	betterAuth({
-		database: new Pool({
-			connectionString: process.env["DATABASE_URL"],
-		}),
+		database: prismaNextAdapter,
 		emailAndPassword: {
 			enabled: true,
 		},
