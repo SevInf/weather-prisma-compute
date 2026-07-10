@@ -60,8 +60,14 @@ export function coveringModel(latitude: number, longitude: number): IconModel {
 	return "dwd_icon";
 }
 
+export interface ModelRunClock {
+	nextStaleAt(
+		models: Iterable<IconModel>,
+	): Promise<Map<IconModel, ModelStaleness | null>>;
+}
+
 /** Per-model run clock; one meta fetch per unique model (≤ 3 per cycle). */
-export class ModelClock {
+export class ModelClock implements ModelRunClock {
 	constructor(private readonly baseUrl: string = OPEN_METEO_DATA_URL) {}
 
 	/** Late run → grace-marked `now + ~10 min`; meta failure → `null` ("unknown",
@@ -116,4 +122,4 @@ export class ModelClock {
 	}
 }
 
-export const modelClock = new ModelClock();
+export const modelClock: ModelRunClock = new ModelClock();
