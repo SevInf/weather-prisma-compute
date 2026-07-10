@@ -80,6 +80,7 @@
                   "column": "updatedAt"
                 }
               },
+              "namespaceId": "public",
               "table": "poi"
             }
           }
@@ -89,64 +90,73 @@
   },
   "storage": {
     "namespaces": {
+      "__unbound__": {
+        "entries": {
+          "table": {}
+        },
+        "id": "__unbound__",
+        "kind": "postgres-unbound-schema"
+      },
       "public": {
-        "id": "public",
-        "kind": "postgres-schema",
-        "tables": {
-          "poi": {
-            "columns": {
-              "createdAt": {
-                "codecId": "pg/timestamptz@1",
-                "default": {
-                  "expression": "now()",
-                  "kind": "function"
+        "entries": {
+          "table": {
+            "poi": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
                 },
-                "nativeType": "timestamptz",
-                "nullable": false
-              },
-              "id": {
-                "codecId": "pg/int4@1",
-                "default": {
-                  "expression": "autoincrement()",
-                  "kind": "function"
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
                 },
-                "nativeType": "int4",
-                "nullable": false
+                "latitude": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": false
+                },
+                "longitude": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
               },
-              "latitude": {
-                "codecId": "pg/float8@1",
-                "nativeType": "float8",
-                "nullable": false
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
               },
-              "longitude": {
-                "codecId": "pg/float8@1",
-                "nativeType": "float8",
-                "nullable": false
-              },
-              "name": {
-                "codecId": "pg/text@1",
-                "nativeType": "text",
-                "nullable": false
-              },
-              "updatedAt": {
-                "codecId": "pg/timestamptz@1",
-                "nativeType": "timestamptz",
-                "nullable": false
-              }
-            },
-            "foreignKeys": [],
-            "indexes": [],
-            "primaryKey": {
-              "columns": [
-                "id"
-              ]
-            },
-            "uniques": []
+              "uniques": []
+            }
           }
-        }
+        },
+        "id": "public",
+        "kind": "postgres-schema"
       }
     },
-    "storageHash": "sha256:b5a0230cb0ff389a166b363fb5e645ea81f3d8ef7c8306c9efe800b6a2fbe4f4"
+    "storageHash": "sha256:2f8b0672f039235bcf08fabb9554c10820dad5a29d29e777f42374d45da3e742"
   },
   "execution": {
     "executionHash": "sha256:f2d58f81f701fe388fe12c9a16534d4d193f0bbfbc0103f580ae2fc294e34a6d",
