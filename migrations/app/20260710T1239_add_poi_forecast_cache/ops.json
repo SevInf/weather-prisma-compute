@@ -1,0 +1,121 @@
+[
+  {
+    "id": "table.poiForecast",
+    "label": "Create table \"poiForecast\"",
+    "summary": "Creates table \"poiForecast\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "poiForecast"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"poiForecast\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"poiForecast\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"poiForecast\"",
+        "sql": "CREATE TABLE \"public\".\"poiForecast\" (\n  \"fetchedAt\" timestamptz NOT NULL,\n  \"hourly\" jsonb NOT NULL,\n  \"model\" text NOT NULL,\n  \"poiId\" int4 NOT NULL,\n  \"staleAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"poiId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"poiForecast\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"poiForecast\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.poiForecast.poiForecast_poiId_idx",
+    "label": "Create index \"poiForecast_poiId_idx\" on \"poiForecast\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "poiForecast_poiId_idx",
+        "table": "poiForecast"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"poiForecast_poiId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"poiForecast_poiId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"poiForecast_poiId_idx\"",
+        "sql": "CREATE INDEX \"poiForecast_poiId_idx\" ON \"public\".\"poiForecast\" (\"poiId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"poiForecast_poiId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"poiForecast_poiId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.poiForecast.poiForecast_poiId_fkey",
+    "label": "Add foreign key \"poiForecast_poiId_fkey\" on \"poiForecast\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "poiForecast_poiId_fkey",
+        "table": "poiForecast"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"poiForecast_poiId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "poiForecast_poiId_fkey",
+          "public",
+          "\"public\".\"poiForecast\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"poiForecast_poiId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"poiForecast\"\nADD CONSTRAINT \"poiForecast_poiId_fkey\"\nFOREIGN KEY (\"poiId\")\nREFERENCES \"public\".\"poi\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"poiForecast_poiId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "poiForecast_poiId_fkey",
+          "public",
+          "\"public\".\"poiForecast\""
+        ]
+      }
+    ]
+  }
+]
