@@ -1,15 +1,5 @@
-// ModelClock — attributes each POI to the DWD ICON model that covers it
-// (mirroring Open-Meteo's `icon_seamless` preference order) and computes
-// when that model's forecast goes stale, i.e. when the next model run is
-// expected to be published.
-//
-// References:
-// - Open-Meteo DWD ICON API: https://open-meteo.com/en/docs/dwd-api
-// - Per-model metadata endpoints (source of the BBOX constants below and
-//   of the run-cadence fields used for staleness):
-//     https://api.open-meteo.com/data/dwd_icon_d2/static/meta.json
-//     https://api.open-meteo.com/data/dwd_icon_eu/static/meta.json
-//     https://api.open-meteo.com/data/dwd_icon/static/meta.json
+// Covering-model attribution + next-run clock for DWD ICON. BBOX/cadence source:
+// https://api.open-meteo.com/data/{dwd_icon_d2,dwd_icon_eu,dwd_icon}/static/meta.json
 
 const OPEN_METEO_DATA_URL = "https://api.open-meteo.com/data";
 
@@ -22,13 +12,8 @@ type ModelBbox = {
 	lonMax: number;
 };
 
-// Domain bounding boxes as published in each model's meta.json `crs_wkt`
-// BBOX (endpoints above; values shown as [latMin, lonMin, latMax, lonMax]):
-//   dwd_icon_d2: BBOX[43.18, -3.94, 58.08, 20.34]  (~2 km, Central Europe)
-//   dwd_icon_eu: BBOX[29.5, -23.5, 70.5, 62.5]     (~7 km, Europe)
-//   dwd_icon:    global                            (~11 km)
-// Ordered highest-resolution first; attribution picks the first box that
-// contains the point, exactly like `icon_seamless` model selection.
+// From the meta.json endpoints above; highest resolution first, first
+// containing BBOX wins (icon_seamless order).
 const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox | null }> = [
 	{
 		model: "dwd_icon_d2",
@@ -38,36 +23,27 @@ const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox | null }>
 		model: "dwd_icon_eu",
 		bbox: { latMin: 29.5, latMax: 70.5, lonMin: -23.5, lonMax: 62.5 },
 	},
-	// Global model: covers everything, terminal fallback.
+	// bbox null = terminal global fallback.
 	{ model: "dwd_icon", bbox: null },
 ];
 
-// When a model's next run is overdue (the computed availability instant is
-// already in the past), re-check again shortly instead of on every request.
-// Shared with consumers so "unknown" results get the same grace window.
+// Re-check window when a run is late or its meta is unknown.
 export const GRACE_MS = 10 * 60 * 1000;
 
-/**
- * A model's staleness verdict. `graceExtended: false` means `staleAt` is the
- * real next-run availability instant; `true` means the run is late and
- * `staleAt` is a short re-check window — consumers with data on hand should
- * extend its life rather than refetch (only rowless consumers need to fetch).
- */
+/** `graceExtended`: the run is late and `staleAt` is only a re-check window —
+ * extend existing data rather than refetch; fetch only when rowless. */
 export type ModelStaleness = {
 	staleAt: Date;
 	graceExtended: boolean;
 };
 
-// Fields consumed from `<model>/static/meta.json`; times are epoch seconds.
+// Epoch seconds.
 type ModelMeta = {
 	last_run_availability_time: number;
 	update_interval_seconds: number;
 };
 
-/**
- * The DWD ICON model covering a coordinate, in seamless preference order:
- * ICON-D2 (highest resolution) → ICON-EU → ICON global. Pure geometry — no network.
- */
+/** Covering model, seamless preference order: D2 → EU → global. Pure geometry. */
 export function coveringModel(latitude: number, longitude: number): IconModel {
 	for (const { model, bbox } of MODEL_DOMAINS) {
 		if (bbox == null) return model;
@@ -80,27 +56,16 @@ export function coveringModel(latitude: number, longitude: number): IconModel {
 			return model;
 		}
 	}
-	// Unreachable: the last domain is the global fallback.
+	// Unreachable: last domain is the global fallback.
 	return "dwd_icon";
 }
 
-/**
- * Service encapsulating the per-model run clock. Consumers ask, per request
- * cycle and for all models they need at once, "when does each model's
- * current forecast go stale?" — one meta.json fetch per model (≤ 3 total).
- */
+/** Per-model run clock; one meta fetch per unique model (≤ 3 per cycle). */
 export class ModelClock {
 	constructor(private readonly baseUrl: string = OPEN_METEO_DATA_URL) {}
 
-	/**
-	 * Per model, `staleAt = last_run_availability_time + update_interval_seconds`
-	 * (the earliest instant the next run should be published), marked
-	 * `graceExtended: false`. When that instant is already past (the run is
-	 * late), returns `now + ~10 min` marked `graceExtended: true` so callers
-	 * can extend existing data instead of refetching. A failed or malformed
-	 * meta fetch yields `null` ("unknown") for that model — never a throw —
-	 * which callers should treat the same as a grace extension.
-	 */
+	/** Late run → grace-marked `now + ~10 min`; meta failure → `null` ("unknown",
+	 * treat as grace) — never a throw. */
 	async nextStaleAt(
 		models: Iterable<IconModel>,
 	): Promise<Map<IconModel, ModelStaleness | null>> {
@@ -122,8 +87,7 @@ export class ModelClock {
 		let meta: ModelMeta;
 		try {
 			const res = await fetch(`${this.baseUrl}/${model}/static/meta.json`, {
-				// Always ask upstream: a cached meta.json would defeat the point
-				// of checking whether a new run has been published.
+				// A cached meta.json would hide newly published runs.
 				cache: "no-store",
 			});
 			if (!res.ok) {
@@ -152,5 +116,4 @@ export class ModelClock {
 	}
 }
 
-/** Default shared instance; the app talks to one model clock. */
 export const modelClock = new ModelClock();

@@ -1,11 +1,5 @@
-// WeatherService — service-oriented adapter over the Open-Meteo ICON
-// forecast API, fronted by a per-POI Postgres read-through cache. Fresh
-// cache rows serve without an upstream forecast call; stale or missing
-// POIs are batched into a single HTTP request via the multi-location
-// `latitude=lat1,lat2&longitude=lng1,lng2` syntax and the raw hourly
-// blocks are cached until the covering ICON model's next run. Fog
-// probability and the "beautiful sunrise/sunset" flag are derived
-// per-request from the (cached or fetched) hourly block.
+// WeatherService — Open-Meteo ICON adapter behind a per-POI Postgres
+// read-through cache; hourly blocks are cached until the covering model's next run.
 //
 // References:
 // - Open-Meteo DWD ICON API: https://open-meteo.com/en/docs/dwd-api
@@ -81,8 +75,7 @@ type LocationResult = {
 	hourly: HourlyBlock;
 };
 
-// Structural view of a `PoiForecast` cache row as the ORM lane returns it
-// (timestamptz columns decode to `Date`).
+// PoiForecast row as the ORM returns it: timestamptz decodes to `Date`, not string.
 type CachedForecastRow = {
 	poiId: number;
 	model: string;
@@ -99,18 +92,8 @@ type CachedForecastRow = {
 export class WeatherService {
 	constructor(private readonly baseUrl: string = OPEN_METEO_URL) {}
 
-	/**
-	 * Resolve a forecast for every POI and return a `Map<poiId, PoiForecast>`.
-	 * Missing entries mean "forecast unavailable" — callers should degrade
-	 * rather than fail the request.
-	 *
-	 * Read-through cached: a cache row is fresh while `now < staleAt` and it
-	 * was fetched on the current UTC day; fresh rows serve without an upstream
-	 * forecast call. Stale/missing POIs are refetched in one batched call and
-	 * upserted with a `staleAt` from their covering model's run clock. A DB
-	 * failure degrades to the direct fetch; an upstream failure serves expired
-	 * rows when present.
-	 */
+	/** Fresh row (`now < staleAt` AND fetched today UTC) serves without upstream fetch.
+	 * DB failure → direct fetch; upstream failure → expired rows; missing entry = unavailable. */
 	async getForecasts(pois: ForecastInput[]): Promise<Map<number, PoiForecast>> {
 		const out = new Map<number, PoiForecast>();
 		if (pois.length === 0) return out;
@@ -139,9 +122,7 @@ export class WeatherService {
 			staleAtByModel = await modelClock.nextStaleAt(modelByPoi.values());
 		}
 
-		// No new run to fetch — either the meta endpoint is down (null) or the
-		// run is late (grace-extended). An expired row then serves under grace
-		// with no upstream refetch; POIs without a row must still fetch.
+		// Meta null or grace-extended = no new run: expired rows serve under grace (no refetch); rowless POIs still fetch.
 		const graceServed = new Set<number>();
 		const toFetch: ForecastInput[] = [];
 		for (const p of toRefresh) {
@@ -168,8 +149,7 @@ export class WeatherService {
 			);
 		}
 
-		// Serve, best source first: fresh cache → fresh fetch → expired row
-		// (grace-served, or upstream fallback per the degradation contract).
+		// Best source first: fresh cache → fresh fetch → expired row.
 		let expiredFallback = 0;
 		for (const p of pois) {
 			const hourly =
@@ -206,7 +186,6 @@ export class WeatherService {
 		return out;
 	}
 
-	/** Load cache rows for the given POI ids; `null` signals a DB failure. */
 	private async loadCacheRows(
 		ids: number[],
 	): Promise<Map<number, CachedForecastRow> | null> {
@@ -223,11 +202,8 @@ export class WeatherService {
 		}
 	}
 
-	/**
-	 * Fetch the raw hourly block for every POI in a single Open-Meteo request.
-	 * Returns `null` on any failure — including a location-count mismatch,
-	 * whose misaligned data must never be cached or served.
-	 */
+	/** One batched request; `null` on any failure incl. count mismatch — never
+	 * cache or serve misaligned data. */
 	private async fetchHourlyBlocks(
 		pois: ForecastInput[],
 	): Promise<Map<number, HourlyBlock> | null> {
@@ -267,12 +243,6 @@ export class WeatherService {
 		return out;
 	}
 
-	/**
-	 * Upsert one cache row per refetched POI. `staleAt` comes from the POI's
-	 * covering model clock; an unknown clock (meta fetch failed) falls back to
-	 * a short grace window. Write failures are logged, never thrown — the
-	 * fetched data still serves this request.
-	 */
 	private async upsertForecasts(
 		refetched: ForecastInput[],
 		fetched: Map<number, HourlyBlock>,
@@ -305,7 +275,6 @@ export class WeatherService {
 		}
 	}
 
-	/** Push `staleAt` forward on rows served under grace (no new run to fetch). */
 	private async extendGrace(poiIds: number[], staleAt: Date): Promise<void> {
 		try {
 			await db.orm.public.PoiForecast.where((f) => f.poiId.in(poiIds)).update({
@@ -424,10 +393,7 @@ function beautyAt(
 	};
 }
 
-// A cached row serves only while the covering model's run is current AND the
-// row was fetched on the current UTC day: sunrise targets are computed per
-// request, and a fetch from yesterday cannot guarantee its 2-day forecast
-// window still reaches tomorrow's sunrise.
+// Same-UTC-day rule: yesterday's 2-day forecast window may miss tomorrow's sunrise.
 function isFresh(row: CachedForecastRow, now: Date): boolean {
 	const staleAtMs = row.staleAt.getTime();
 	const fetchedMs = row.fetchedAt.getTime();
@@ -443,8 +409,7 @@ function isNumberOrNullArray(v: unknown): v is Array<number | null> {
 	return Array.isArray(v) && v.every((x) => x === null || typeof x === "number");
 }
 
-// Validate a cached jsonb payload back into an HourlyBlock; anything
-// malformed is treated as a missing cache row.
+// Malformed cached payload = missing row.
 function parseHourlyBlock(value: unknown): HourlyBlock | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 	const b = value as Record<string, unknown>;

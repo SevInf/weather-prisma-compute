@@ -9,13 +9,12 @@ model Poi {
   updatedAt temporal.updatedAt()
 }
 
-// Per-POI forecast cache: one row per POI, refreshed when the covering
-// DWD ICON model publishes a new run.
+// Per-POI forecast cache; refreshed when the covering ICON model publishes a new run.
 model PoiForecast {
   poiId     Int      @id
   poi       Poi      @relation(fields: [poiId], references: [id], onDelete: Cascade)
-  model     String // covering model slug: "dwd_icon_d2" | "dwd_icon_eu" | "dwd_icon"
-  hourly    Json // raw Open-Meteo hourly block (time + series arrays)
+  model     String
+  hourly    Json
   fetchedAt DateTime // drives UTC-day-rollover invalidation
-  staleAt   DateTime // when the covering model's next run is expected to be available
+  staleAt   DateTime // covering model's next-run instant
 }
