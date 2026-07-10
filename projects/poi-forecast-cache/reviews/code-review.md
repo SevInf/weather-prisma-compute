@@ -4,7 +4,7 @@
 
 ## Summary
 
-- **Current verdict:** D5 R1 — SATISFIED (slice re-closed)
+- **Current verdict:** D5 R2 — SATISFIED (slice re-closed; operator's stricter trim bar applied)
 - **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim)
 - **DoD scoreboard totals:** 7 PASS / 0 FAIL / 0 NOT VERIFIED
 - **Open findings:** 0 (F1, F2 resolved at `35f3e1e`)
@@ -143,6 +143,19 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 
 **For orchestrator:** nothing new; `5fda882` (.gitattributes) not reviewed per scope, no defect incidentally observed.
 
+### D5 R2 — SATISFIED (operator overrule verified)
+
+**Scope:** aggressive comment trim per operator bar. Commit `491317b` (3 files, +30/−103).
+
+**Tasks:** all three completed-when conditions clean — budgets independently counted on disk with the brief's regex: model-clock **15/15** total, weather-service **12/12** PR-added, contract.prisma header 1 + exactly 2 field comments; diff comment/blank-only (contract.prisma trailing-comment hunks verified code-token-identical after comment strip); build green; emit stability corroborated (`git status src/` clean, refs pin unchanged).
+
+**AC delta:** none — totals hold 7 PASS / 0 FAIL / 0 NOT VERIFIED; DoD-6 evidence extends to `491317b`. All seven must-survive kernels present and terse (Date-decode trap, same-UTC-day, one-decision-line, bbox-null sentinel, unreachable guard, no-store ×2, extend-don't-refetch on `ModelStaleness`). Pre-existing main comments (Tardif & Rasmussen, weather-service no-store block) untouched. Scan: sole hit = exempt `ICON`/`D2` domain term (standing D2 R1 ruling).
+
+**Findings:** none — R1-bar keeps that were cut (private-method docs) hide no correctness trap; their contracts are signature-visible (`| null`, `allSettled`, try/catch).
+
+**For orchestrator:** none.
+
 ## Orchestrator notes
 
 - **D3 R1 intent-validation (2026-07-10):** F1 verdict upheld — project spec § At a glance settled "extend `staleAt` instead of re-fetching forecasts" for late runs; the bare-Date clock surface lost that bit. Scope amendment authorized without operator escalation: `src/services/model-clock.ts` is open for D3 R2 (same slice, same PR, spec-mandated behaviour — slice spec § Chosen design (2) and § Scope amended accordingly). F2 rides along. Items-for-user 3 (PN gotcha candidates) parked in `learnings.md` for close-out routing.
+- **D5 R1 operator overrule (2026-07-10):** the operator rejected the R1 trim as insufficient ("more english than typescript in the services"). The R1 keep-decisions for long doc comments are overruled — the bar for R2 is much stricter: method/class doc comments compressed to ≤2 lines carrying only the non-derivable contract; file-header narration cut to references; prose that restates adjacent constants/types removed. D5 R2 dispatched with a hard comment budget.
