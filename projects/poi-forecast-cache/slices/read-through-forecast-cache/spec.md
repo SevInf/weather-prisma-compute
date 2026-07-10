@@ -31,6 +31,15 @@ One row per POI (`poiId` is the PK); `onDelete: Cascade` because `DELETE /api/po
 - `nextStaleAt(model)` → fetches `https://api.open-meteo.com/data/<model>/static/meta.json`, returns `(last_run_availability_time + update_interval_seconds) * 1000` as a Date. Grace path: when a re-check shows no new run (late run), returns `now + ~10 min` **marked as grace-extended** (e.g. `{staleAt, graceExtended}`), so consumers can distinguish a real next-run instant from a grace extension. Per the project spec, grace-extended results must extend existing rows' `staleAt` *instead of* triggering an upstream forecast refetch (refetch only when rows are missing). _(Amended after D3 R1: the original surface returned a bare Date, which made late-run grace indistinguishable from a new-run instant and caused forecast refetches every grace window — reviewer finding F1.)_
 - Meta fetches are per-model, batched per request cycle (at most 3 upstream meta calls even with many POIs).
 
+**2b. Per-model clock persistence** — _amended 2026-07-10 (operator decision, D8): `staleAt` is a per-model fact and moves out of `PoiForecast` into a per-model clock table, with the clock path mirroring the forecast path's connector architecture._
+
+- Contract: new `ModelRun` model — `model IconModel @id`, `availableAt DateTime` (run availability instant), `updateIntervalSeconds Int`, `checkedAt DateTime` (last upstream consult). `PoiForecast` **drops `staleAt`** (keeps `model`, `hourly`, `fetchedAt`).
+- `ModelMetaConnector` (interface): raw per-model meta access — `fetchMeta(model) → {availableAt, updateIntervalSeconds} | null`. Implemented by an Open-Meteo HTTP repository (no policy).
+- `ModelRunRepository` (interface + PN implementation): dumb CRUD on the clock table; throws on DB failure.
+- **Cached connector** implementing `ModelMetaConnector`: reads clock rows; a row is current while `availableAt + interval > now`, or while `checkedAt` is within the ~10 min re-check window (late-run throttle); otherwise delegates to the HTTP connector and upserts. Upstream failure with a row present → serve the stale row; no row → null.
+- `ModelClock` service: pure staleness derivation over the injected connector — same `ModelRunClock` interface to consumers; `ModelStaleness` gains `availableAt` so the forecast path can check run currency.
+- Freshness rule becomes: `now < model staleAt` (per-model) AND `poi.fetchedAt >= model.availableAt` (run currency — heals partial-write divergence) AND same-UTC-day (unchanged). Grace becomes a clock-table concern (checkedAt throttle); the per-POI `extendStaleAt` write path dies.
+
 **3. Read-through wiring** — _amended 2026-07-10 (operator decision, in-PR refactor): the wiring is decomposed into a services/repositories architecture; the original inline shape below described D3's first landing and remains the behavioural contract._ Layering (dependencies on interfaces only, composition via module singletons):
 
 - `ForecastSource` (interface): `hourlyBlocks(points: {id, latitude, longitude}[]) → Promise<Map<number, HourlyBlock> | null>`.

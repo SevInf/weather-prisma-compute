@@ -53,9 +53,16 @@
 - **Hands to:** Slice DoD unchanged; review comments each resolvable by the operator.
 - **Focus:** the six comments only. No GitHub interactions (operator law: no replies on his behalf).
 
+### Dispatch 8: model-clock-persistence _(added 2026-07-10; operator decision after design discussion)_
+
+- **Outcome:** Per spec § Chosen design (2b): `ModelRun` clock table added, `PoiForecast.staleAt` dropped (migration extends the graph); `ModelMetaConnector` interface with an Open-Meteo HTTP repository and a cached connector over the clock table; `ModelClock` reduced to pure staleness derivation over the injected connector (`ModelStaleness` gains `availableAt`); `CachedForecastSource` freshness = per-model staleAt + per-POI run currency (`fetchedAt >= availableAt`) + same-UTC-day; per-POI `extendStaleAt` path removed. Behaviour contract preserved (decision log, degradation directions, grace cadence ~10 min).
+- **Builds on:** D6/D7's architecture + migration graph.
+- **Hands to:** Slice DoD unchanged; clock state persisted per model (cross-request memory; one-row grace).
+- **Focus:** contract + migration, `src/repositories/**`, `src/services/model-clock.ts`, `src/services/cached-forecast-source.ts`. Out: route, UI, singleflight (still follow-up).
+
 ## Sizing
 
-Dispatch-INVEST: all seven pass (D7 = M — six bounded review fixes, one of which is a contract change with a migration) (D5 = S — mechanical editorial pass; D6 = M — structural refactor with pinned interfaces and behaviour-preservation gates). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
+Dispatch-INVEST: all eight pass (D7 = M — six bounded review fixes; D8 = L — contract change + two new connector seams + policy rework, but one coherent outcome) (D5 = S — mechanical editorial pass; D6 = M — structural refactor with pinned interfaces and behaviour-preservation gates). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
 
 ## Open items
 

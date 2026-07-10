@@ -4,8 +4,8 @@
 
 ## Summary
 
-- **Current verdict:** D7 R1 — SATISFIED (slice re-closed)
-- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim), D6 (services/repositories split + functional core), D7 (PR-review fixes)
+- **Current verdict:** D8 R1 — SATISFIED (slice re-closed)
+- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim), D6 (services/repositories split + functional core), D7 (PR-review fixes), D8 (model-clock persistence)
 - **DoD scoreboard totals:** 7 PASS / 0 FAIL / 0 NOT VERIFIED
 - **Open findings:** 0 (F1, F2 resolved at `35f3e1e`)
 - **Open escalations:** 0
@@ -29,6 +29,8 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 > **D6 re-evidencing note:** `c16d807` + `efaa333` relocated the read-through behaviour into `src/services/cached-forecast-source.ts` (+ `src/repositories/*`) with zero behaviour change (verified phase-by-phase on disk; log/warn wording byte-preserved). All D3-era behaviour gates re-run at `efaa333`: dev-server smoke, cold path, stub-based grace check — identical outcomes. DoD-1…DoD-4, DoD-6, and SL-1 evidence is re-anchored at `efaa333` accordingly.
 >
 > **D7 re-evidencing note:** `a9eb765` (PR-review fixes: enum `model` column via additive CHECK, branded `PoiId`, `#private` members) re-ran all behaviour gates with identical outcomes and unchanged log wording — the smoke test's first GET exercised the live late-run grace path in production conditions. DoD-5's migration graph now chains three packages (`null → eecde426 → 6db32dad → 5b7560…`), `migration status` clean, refs pin advanced consistently. Behaviour rows' evidence extends to `a9eb765`.
+>
+> **D8 re-evidencing note:** `1f7de42` (spec § 2b: persisted per-model clock) moved staleness off `PoiForecast` (authorized `staleAt` drop) into a `ModelRun` table behind a connector stack; freshness is now run-currency (`fetchedAt >= availableAt`) + open window + same-UTC-day. Migration graph is four packages (`… 5b7560 → 8cdd9f…`), status clean. Sanctioned behaviour deltas only: the per-POI grace write (and its warn) died — the throttle now lives in `ModelRun.checkedAt`. DoD-2's letter referenced the `staleAt` column; its substance (run passes → next request refetches → rows reflect the new run) is carried by the run-currency gate (row with `fetchedAt < availableAt` refetched despite fresh clock) — evidence base holds. Decision-log wording verbatim; all gates re-run green incl. zero-meta-HTTP proof (live corroboration: `checkedAt` byte-identical across GETs).
 
 ## Subagent IDs
 
@@ -182,6 +184,18 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 **Findings:** none. (`IconModel` TS union remains hand-declared alongside the now-emitted contract enum — structurally identical, self-policing via the lane's types at the repo boundary; the brief's "align if the lane surfaces one" is satisfied in substance. Not a finding.)
 
 **For orchestrator:** new gotcha candidate for the ledger — the planner re-plans the FK-implied index (`poiForecast_poiId_idx`) on unrelated edges because the contract records `indexes: []`; replay would fail on duplicate. Skill-sanctioned hand-edit + self-emit flow handled it; worth upstreaming with the D4 batch.
+
+### D8 R1 — SATISFIED (slice re-closed)
+
+**Scope:** D8 model-clock persistence (spec § 2b). Commit `1f7de42` (20 files).
+
+**Tasks:** all completed-when conditions clean. Migration verified on disk: exactly 3 ops (`dropColumn.poiForecast.staleAt` destructive — the sole authorized drop; `table.modelRun` + `checkConstraint.modelRun_model_check` additive), no FK-index re-plan residue, chain `5b7560 → 8cdd9f` extends D7's edge, refs pin matches, CHECK values = enum members. Seams: HTTP meta repo + PN run repo policy-free (throws, no catching); `CachedModelMetaConnector` owns all clock-cache policy (`isCurrent` = open window OR checkedAt within grace; outage-with-row → stale meta + checkedAt bump; rowless → null; DB fail → delegate); `ModelClock` = pure `deriveStaleness` over injected connector; `isFresh`/`triageRefresh` match the pinned predicates verbatim. `weather-service.ts` + route byte-untouched; `#private`/`PoiId`/core-purity all re-verified (rg clean).
+
+**AC delta:** none — totals hold 7 PASS / 0 FAIL / 0 NOT VERIFIED; re-evidencing note above (DoD-2 substance judgment recorded). Scans: zero hits.
+
+**Findings:** none.
+
+**For orchestrator:** Flag C accepted — the checkedAt-on-failure bump matches the old outage cadence (~1 consult per GRACE_MS) with the same ≤GRACE_MS new-run-pickup delay the old per-row grace had; bump-write failure degrades to per-request consults (never worse). FK-index gotcha now confirmed recurring (2-for-2 on `poiForecast` edges) — raise its priority in the upstream batch.
 
 ## Orchestrator notes
 
