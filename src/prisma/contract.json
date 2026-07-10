@@ -2,87 +2,96 @@
   "schemaVersion": "1",
   "targetFamily": "sql",
   "target": "postgres",
-  "profileHash": "sha256:1a8dbe044289f30a1de958fe800cc5a8378b285d2e126a8c44b58864bac2c18e",
+  "profileHash": "sha256:9c8aa3114e84ed3b7ea2bd57526d9c2e1bf7c5292be694e9d3801f566fda7ccb",
   "roots": {
-    "poi": "Poi"
+    "poi": {
+      "model": "Poi",
+      "namespace": "public"
+    }
   },
-  "models": {
-    "Poi": {
-      "fields": {
-        "createdAt": {
-          "nullable": false,
-          "type": {
-            "codecId": "pg/timestamptz@1",
-            "kind": "scalar"
-          }
-        },
-        "id": {
-          "nullable": false,
-          "type": {
-            "codecId": "pg/int4@1",
-            "kind": "scalar"
-          }
-        },
-        "latitude": {
-          "nullable": false,
-          "type": {
-            "codecId": "pg/float8@1",
-            "kind": "scalar"
-          }
-        },
-        "longitude": {
-          "nullable": false,
-          "type": {
-            "codecId": "pg/float8@1",
-            "kind": "scalar"
-          }
-        },
-        "name": {
-          "nullable": false,
-          "type": {
-            "codecId": "pg/text@1",
-            "kind": "scalar"
-          }
-        },
-        "updatedAt": {
-          "nullable": false,
-          "type": {
-            "codecId": "pg/timestamptz@1",
-            "kind": "scalar"
+  "domain": {
+    "namespaces": {
+      "public": {
+        "models": {
+          "Poi": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "latitude": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "longitude": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "latitude": {
+                  "column": "latitude"
+                },
+                "longitude": {
+                  "column": "longitude"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "table": "poi"
+            }
           }
         }
-      },
-      "relations": {},
-      "storage": {
-        "fields": {
-          "createdAt": {
-            "column": "createdAt"
-          },
-          "id": {
-            "column": "id"
-          },
-          "latitude": {
-            "column": "latitude"
-          },
-          "longitude": {
-            "column": "longitude"
-          },
-          "name": {
-            "column": "name"
-          },
-          "updatedAt": {
-            "column": "updatedAt"
-          }
-        },
-        "table": "poi"
       }
     }
   },
   "storage": {
     "namespaces": {
-      "__unbound__": {
-        "id": "__unbound__",
-        "kind": "postgres-unbound-schema",
+      "public": {
+        "id": "public",
+        "kind": "postgres-schema",
         "tables": {
           "poi": {
             "columns": {
@@ -137,10 +146,10 @@
         }
       }
     },
-    "storageHash": "sha256:1e56be8e129d88ab934a43c00965862bbf7225adc09a58dd46ac656fdb54705b"
+    "storageHash": "sha256:b5a0230cb0ff389a166b363fb5e645ea81f3d8ef7c8306c9efe800b6a2fbe4f4"
   },
   "execution": {
-    "executionHash": "sha256:75777f07d9168fa8a218e1e8fc54a57ebcae7e2826eb6c3503749c361bccf0b5",
+    "executionHash": "sha256:f2d58f81f701fe388fe12c9a16534d4d193f0bbfbc0103f580ae2fc294e34a6d",
     "mutations": {
       "defaults": [
         {
@@ -162,6 +171,7 @@
   },
   "capabilities": {
     "postgres": {
+      "distinctOn": true,
       "jsonAgg": true,
       "lateral": true,
       "limit": true,
@@ -171,6 +181,7 @@
     "sql": {
       "defaultInInsert": true,
       "enums": true,
+      "lateral": true,
       "returning": true
     }
   },

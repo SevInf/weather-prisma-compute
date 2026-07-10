@@ -1,34 +1,34 @@
 {
-  "name": "weather-app",
-  "version": "0.0.1",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "postbuild": "cp -R .next/static .next/standalone/.next/static && (test -d public && cp -R public .next/standalone/public || true)",
-    "start": "bun .next/standalone/server.js",
-    "serve": "bun run build && bun run start",
-    "lint": "next lint",
-    "prebuild": "prisma-next contract emit",
-    "contract:emit": "prisma-next contract emit"
-  },
-  "dependencies": {
-    "@prisma-next/postgres": "^0.11.0",
-    "dotenv": "^17.4.2",
-    "maplibre-gl": "^5.24.0",
-    "next": "^15.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-map-gl": "^8.1.1",
-    "suncalc": "^1.9.0"
-  },
-  "devDependencies": {
-    "@types/node": "^25.9.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@types/suncalc": "^1.9.2",
-    "prisma-next": "^0.11.0",
-    "typescript": "^5.6.3"
-  }
+	"name": "weather-app",
+	"version": "0.0.1",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"postbuild": "cp -R .next/static .next/standalone/.next/static && (test -d public && cp -R public .next/standalone/public || true)",
+		"start": "bun .next/standalone/server.js",
+		"serve": "bun run build && bun run start",
+		"lint": "next lint",
+		"prebuild": "prisma-next contract emit",
+		"contract:emit": "prisma-next contract emit"
+	},
+	"dependencies": {
+		"@prisma-next/postgres": "0.12.0",
+		"dotenv": "^17.4.2",
+		"maplibre-gl": "^5.24.0",
+		"next": "^15.0.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"react-map-gl": "^8.1.1",
+		"suncalc": "^1.9.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.1",
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"@types/suncalc": "^1.9.2",
+		"prisma-next": "0.12.0",
+		"typescript": "^5.6.3"
+	}
 }
