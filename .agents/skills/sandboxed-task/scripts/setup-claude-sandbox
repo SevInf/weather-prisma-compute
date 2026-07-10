@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# setup-claude-sandbox: Verify sandbox prerequisites and configure AppArmor if needed
+# Run once per machine.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/.common.sh"
+
+echo "Setting up Claude sandbox..."
+echo
+
+# Step 1: Check prerequisites
+echo "Checking prerequisites..."
+
+if ! command -v bwrap &>/dev/null; then
+    fail "bubblewrap not found"
+    echo "  Install with: apt install bubblewrap  OR  dnf install bubblewrap"
+    exit 1
+fi
+ok "bubblewrap installed ($(bwrap --version))"
+
+CLAUDE_BIN="$(find_claude_bin)"
+if [[ -z "$CLAUDE_BIN" ]]; then
+    fail "claude CLI not found"
+    echo "  Install Claude Code first"
+    echo "  Checked: PATH, ~/.local/bin/claude"
+    exit 1
+fi
+ok "claude CLI found ($CLAUDE_BIN)"
+
+USER_HOME="$(get_user_home)"
+if [[ ! -f "$USER_HOME/.claude.json" ]]; then
+    fail "$USER_HOME/.claude.json not found"
+    echo "  Run 'claude' once to create it"
+    exit 1
+fi
+ok "$USER_HOME/.claude.json exists"
+
+# Step 2: Test bwrap (may trigger AppArmor configuration)
+echo
+echo "Testing bwrap..."
+BWRAP_OUTPUT=$(run_as_user bwrap --ro-bind / / /bin/true 2>&1) || true
+
+if ! test_bwrap_as_user; then
+    if echo "$BWRAP_OUTPUT" | grep -q -e "setting up uid map" -e "Permission denied"; then
+        warn "AppArmor is blocking bwrap"
+        echo
+        echo "  Running AppArmor configuration..."
+        echo
+        if [[ -x "$SCRIPT_DIR/configure-apparmor" ]]; then
+            "$SCRIPT_DIR/configure-apparmor"
+            # Re-test after configuration
+            if ! test_bwrap_as_user; then
+                fail "bwrap still not working after AppArmor configuration"
+                exit 1
+            fi
+        else
+            fail "configure-apparmor script not found at $SCRIPT_DIR/configure-apparmor"
+            exit 1
+        fi
+    else
+        fail "bwrap test failed"
+        echo "  Output: $BWRAP_OUTPUT"
+        exit 1
+    fi
+else
+    ok "bwrap works"
+fi
+
+# Step 3: Final verification
+echo
+echo "Final verification..."
+if run_as_user env SANDBOX_WORK_DIR=/tmp "$SCRIPT_DIR/claude-sandbox" --version &>/dev/null; then
+    ok "claude-sandbox works"
+else
+    fail "claude-sandbox failed"
+    echo "  Run with bash -x to debug: SANDBOX_WORK_DIR=/tmp bash -x $SCRIPT_DIR/claude-sandbox --version"
+    exit 1
+fi
+
+echo
+echo -e "${GREEN}Setup complete.${NC}"
+echo
+echo "Usage (see SKILL.md for full workflow):"
+echo "  1. Create worktree:  git worktree add /tmp/myproject-feature -b feature"
+echo "  2. Run sandbox:      SANDBOX_WORK_DIR=/tmp/myproject-feature $SCRIPT_DIR/claude-sandbox"

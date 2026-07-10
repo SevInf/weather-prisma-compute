@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# verify-sandbox: Check if running inside bwrap jail and test constraints
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/.common.sh"
+
+echo "Sandbox verification"
+echo "===================="
+echo
+
+# Check hostname
+if [[ "$(hostname)" == "sandbox" ]]; then
+    ok "Hostname is 'sandbox' — running inside jail"
+else
+    fail "Hostname is '$(hostname)' — NOT in sandbox"
+    exit 1
+fi
+
+# Check read-only mounts
+echo
+echo "Filesystem constraints:"
+
+if touch /etc/.sandbox-test 2>/dev/null; then
+    rm -f /etc/.sandbox-test
+    fail "/etc is writable (should be read-only)"
+else
+    ok "/etc is read-only"
+fi
+
+if touch /usr/.sandbox-test 2>/dev/null; then
+    rm -f /usr/.sandbox-test
+    fail "/usr is writable (should be read-only)"
+else
+    ok "/usr is read-only"
+fi
+
+# Check sensitive paths are blocked
+echo
+echo "Sensitive paths:"
+
+ssh_files=$(ls -A "$HOME/.ssh" 2>/dev/null | tr '\n' ' ')
+if [[ "$ssh_files" == "known_hosts " ]]; then
+    ok "~/.ssh contains only known_hosts"
+elif [[ -z "$ssh_files" ]]; then
+    ok "~/.ssh is empty or not accessible"
+else
+    fail "~/.ssh contains unexpected files: $ssh_files"
+fi
+
+if [[ -d "$HOME/.aws" ]]; then
+    fail "~/.aws is accessible"
+else
+    ok "~/.aws is not accessible"
+fi
+
+if [[ -f "$HOME/.netrc" ]]; then
+    fail "~/.netrc is accessible"
+else
+    ok "~/.netrc is not accessible"
+fi
+
+# Check working directory is writable
+echo
+echo "Working directory (worktree):"
+
+if touch .sandbox-write-test 2>/dev/null; then
+    rm -f .sandbox-write-test
+    ok "Current directory ($PWD) is writable"
+else
+    fail "Current directory is not writable"
+fi
+
+# extra bind dirs are optional; only verify when the env var is present
+if [[ -n "${SANDBOX_EXTRA_BIND_DIRS:-}" ]]; then
+    echo
+    echo "Extra bind directories (read-only):"
+
+    IFS=',' read -ra extra_dirs <<< "$SANDBOX_EXTRA_BIND_DIRS"
+    for dir in "${extra_dirs[@]}"; do
+        if [[ -d "$dir" && -r "$dir" ]]; then
+            ok "$dir exists and is readable"
+        else
+            fail "$dir is not accessible"
+        fi
+
+        if touch "$dir/.sandbox-test" 2>/dev/null; then
+            rm -f "$dir/.sandbox-test"
+            fail "$dir is writable (should be read-only)"
+        else
+            ok "$dir is read-only"
+        fi
+    done
+fi
+
+# Check network
+echo
+echo "Network:"
+
+if curl -s --max-time 2 https://api.anthropic.com >/dev/null 2>&1; then
+    ok "Network access available"
+else
+    warn "Network may be restricted (could not reach api.anthropic.com)"
+fi
+
+# Summary
+echo
+echo "===================="
+if [[ "$(hostname)" == "sandbox" ]]; then
+    echo -e "${GREEN}Running inside sandbox${NC}"
+else
+    echo -e "${RED}NOT sandboxed${NC}"
+fi

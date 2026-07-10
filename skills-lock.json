@@ -1,6 +1,360 @@
 {
   "version": 1,
   "skills": {
+    "agent-team-review": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/agent-team-review/SKILL.md",
+      "computedHash": "b3e8d727079fa8570bcf7a40492150ff9228dbfe1a4974c40f3882557b80bb2a"
+    },
+    "claude-code-transcripts": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/claude-code-transcripts/SKILL.md",
+      "computedHash": "0a5ebb8ba39e4038067fe018c5aeaa789c317e74d9a8a14f5cf3624987e195bd"
+    },
+    "clickhouse-grafana-dashboards": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/clickhouse-grafana-dashboards/SKILL.md",
+      "computedHash": "727980fb8fae97a634ca7c76e0dc7ad15f536a552fe67e180e48d25d1a9d7c0e"
+    },
+    "code-review": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/code-review/SKILL.md",
+      "computedHash": "c9d55e12c79ca131d6bee78119f6dca73ea6f8bee964e04a73e3ac38b99178f0"
+    },
+    "code-security-review": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/code-security-review/SKILL.md",
+      "computedHash": "3877f3ea37622b72f3292db083517d9ff96acf12ac0b469b2322b81ff981f037"
+    },
+    "content-publish-changelog": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/content-publish-changelog/SKILL.md",
+      "computedHash": "af8a0375eaec85f8d27bc2b07dee1f29782a2bbf70c77537ba51d1a0d9943cdf"
+    },
+    "content-write-blog": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/content-write-blog/SKILL.md",
+      "computedHash": "61453524097b9d7043f30e428a52e9334e62d1068489b5fc84bd12ae3310701c"
+    },
+    "content-write-changelog": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/content-write-changelog/SKILL.md",
+      "computedHash": "25e54c9c9f84e724cb01f742c1bd0a5dfb4bdc7c8e9625bd49deaa3a37f7ce7b"
+    },
+    "content-write-tweet": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/content-write-tweet/SKILL.md",
+      "computedHash": "d56e1d6b6484aee86377f1ca69eaf0638b547381b3552e30d6f93f5c0f617d52"
+    },
+    "drive-agent-personas": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-agent-personas/SKILL.md",
+      "computedHash": "8bb62f065f2e3d396cf36fdb8c940ae88766ea3028b3e0052ea925e67f7bb0ef"
+    },
+    "drive-bootstrap-context": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-bootstrap-context/SKILL.md",
+      "computedHash": "104720906b5829b4a2d61fab466fbd851bcf2a2e9ac258d5a3a8f95e0464d4f6"
+    },
+    "drive-build-workflow": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-build-workflow/SKILL.md",
+      "computedHash": "464ecf87780c14ac9f23afedc173b10d0eec14629d92da338722bc133e36032c"
+    },
+    "drive-check-health": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-check-health/SKILL.md",
+      "computedHash": "a790eb66413d2b350bd05964c82814d375934a082cb571405208381f1b4b6d2b"
+    },
+    "drive-close-project": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-close-project/SKILL.md",
+      "computedHash": "74fb05e32e0d57e2e884d6cc726079d60332b1e0f12410603cb268b27b6189b5"
+    },
+    "drive-code-review": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-code-review/SKILL.md",
+      "computedHash": "4c77b07d6fb441b2b94671517ee473bc24dda589a2339d01b4c0021d990721ae"
+    },
+    "drive-create-deployment-plan": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-create-deployment-plan/SKILL.md",
+      "computedHash": "93c86cf98cd818557513c90b582f58bdaca2146713365e67a043a606dd7c9909"
+    },
+    "drive-create-plan": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-create-plan/SKILL.md",
+      "computedHash": "89f3ecce08d82311fab98ec4dae1bb26c1366d9dcff4276e3caeb9b4ff1d1c87"
+    },
+    "drive-create-project": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-create-project/SKILL.md",
+      "computedHash": "93b6653d132c1c90a00315f9d3f13ecfd9b9781cbd830fcf64617a930437bc5d"
+    },
+    "drive-create-spec": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-create-spec/SKILL.md",
+      "computedHash": "a783613624dd737d8dc14c6d7b4a4e959432c4952764d8bc9f034e3ff49a4b47"
+    },
+    "drive-deliver-workflow": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-deliver-workflow/SKILL.md",
+      "computedHash": "0ef8d1bc479b8266aaba8ce8c78b84abfb09d9cec98f0cd7b9b197dfb3763ce8"
+    },
+    "drive-diagnose-run": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-diagnose-run/SKILL.md",
+      "computedHash": "77dd53591f18867d7a50416f028bf49707eafbfe8e9ce958951e4707413383f3"
+    },
+    "drive-discussion": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-discussion/SKILL.md",
+      "computedHash": "1d4110a844a7e7bd261a3b71fd399338ced3351b1294824c54afeff7daaf82e5"
+    },
+    "drive-dispatch": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-dispatch/SKILL.md",
+      "computedHash": "194a872a02244f9de05384ff77e1666d57b18c3c765fc3bf513db6a99e371ac3"
+    },
+    "drive-execute-plan": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-execute-plan/SKILL.md",
+      "computedHash": "db9dda8ea425363cd206a7cefcfa0b72cc404e9d4aad34a0c17ba9cb6944e6ef"
+    },
+    "drive-judge-harness": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-judge-harness/SKILL.md",
+      "computedHash": "e67745a1470d4a0ab9129951ed39d0d58e5ffef52c31ccaeca364b845ebe3001"
+    },
+    "drive-list": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.system/drive-list/SKILL.md",
+      "computedHash": "55736c1aa54f336cc21154c515950998a545bc0115ac327876ba1322e1b23df1"
+    },
+    "drive-orchestrate-plan": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-orchestrate-plan/SKILL.md",
+      "computedHash": "75e888b8ecb44c4af0dc707215d0383874303eff83218a4924501305504a3ee4"
+    },
+    "drive-plan-project": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-plan-project/SKILL.md",
+      "computedHash": "1789eb9992b0871051dc9dcae1225f51708eed5f1992e53d4e759e4ac7d8b6b0"
+    },
+    "drive-plan-slice": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-plan-slice/SKILL.md",
+      "computedHash": "8ca90e8ec0f204902039da4f0e61d482396daa731e71bb52f7d43786a961b67c"
+    },
+    "drive-pr-description": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-pr-description/SKILL.md",
+      "computedHash": "849012110313aeb31917a74dd165b7b4dfadece40b11076ccd1d6d3a4fcccac1"
+    },
+    "drive-pr-reply": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-pr-reply/SKILL.md",
+      "computedHash": "64898ca84e862a8f46a7101773d41243f5b9a631255d51363fb7dafec993c59e"
+    },
+    "drive-pr-walkthrough": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-pr-walkthrough/SKILL.md",
+      "computedHash": "77feacc931a255dcbc1cac526b837ecbc3c23f1a7d022b115c3f33f06f8fa756"
+    },
+    "drive-qa-plan": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-qa-plan/SKILL.md",
+      "computedHash": "0daa6ee9d234d9703d3a54a6591e66f909a626d6f229ef3b34ec8cc67fe54654"
+    },
+    "drive-qa-run": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-qa-run/SKILL.md",
+      "computedHash": "05315c4befb5c03c2bad21b903538f4ded830667ec35ab7afcf1195afb45fec7"
+    },
+    "drive-reconcile-skills": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-reconcile-skills/SKILL.md",
+      "computedHash": "4ff9f4259e31b766eee7fa219f31e080b4e92e33b3bfda3f4d6bdb26c91c3c57"
+    },
+    "drive-record-traces": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-record-traces/SKILL.md",
+      "computedHash": "1df6064ca3608742ec5c0775417faf861e8ddfac2b64d0dc54ff305e6d8535ae"
+    },
+    "drive-review-code": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/drive-review-code/SKILL.md",
+      "computedHash": "3d0c7057ba8edf16b4ec8bd4df7031860ec5795927fe619d67c6bac6e7ed5754"
+    },
+    "drive-run-retro": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-run-retro/SKILL.md",
+      "computedHash": "d69468ef9e128b8194e20f5dc508175a42d8076ce397546a726e1d26fcc4dd19"
+    },
+    "drive-specify-project": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-specify-project/SKILL.md",
+      "computedHash": "b5a4d72a1b3518b2ba6734237c9bd6ba75ff01fe180a044635842ab108401869"
+    },
+    "drive-specify-slice": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-specify-slice/SKILL.md",
+      "computedHash": "4cfb402f345494c1b57bc854d028212b43ef6bb8694e0cd3fa5bac815a6e36db"
+    },
+    "drive-start-workflow": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-start-workflow/SKILL.md",
+      "computedHash": "9d8d861d9af1b7694795383e68c8e1f5d35ca014c76cbf27b6a8d0a35e3cf3f0"
+    },
+    "drive-triage-work": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-triage-work/SKILL.md",
+      "computedHash": "ead639ebc8b0d8c48d6484ecb2236bed1523f6130e897c175efe8f3c65b6db95"
+    },
+    "drive-update-skills": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.pilot/drive-update-skills/SKILL.md",
+      "computedHash": "98144b24e626af2ed683f3e654d3d6ae2134fddec2528d7a7d493533ef122dd8"
+    },
+    "enable-pr-code-security-workflow": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/enable-pr-code-security-workflow/SKILL.md",
+      "computedHash": "48ebf21e50f58ecc35faedc08de883717559df82787ee56c874ce39274ea6a6f"
+    },
+    "git-resolve-drift": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/git-resolve-drift/SKILL.md",
+      "computedHash": "a6372e692b87286ae61712f3abd6c52d139899584a0666afb86479ac1cbb67ff"
+    },
+    "ignite-create-adr": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ignite-create-adr/SKILL.md",
+      "computedHash": "42b15d8e02ba2f58409d7e41df049265955bb084fd487de9aae54f0fdeefa908"
+    },
+    "ignite-create-docs": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ignite-create-docs/SKILL.md",
+      "computedHash": "1b0bfa547831332761aaf150df68f6633839c6674f67f5640705701f2b8afd85"
+    },
+    "ignite-create-skill": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/ignite-create-skill/SKILL.md",
+      "computedHash": "fcc24fa7727a0e5f218cb3ca51fc94acffbd44e550d75e257c90069796e7db8f"
+    },
+    "ignite-create-writing-style": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/ignite-create-writing-style/SKILL.md",
+      "computedHash": "b790b46633f0e6b9d13e2aa2a9459dbdd4ac762710695aeaab972e3328bd3cef"
+    },
+    "ignite-update-agentsmd": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/ignite-update-agentsmd/SKILL.md",
+      "computedHash": "27313fe433a44b652edc6af82a33817ef1174429459fa2819edcc980c71160ea"
+    },
+    "interactive-checklist": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/interactive-checklist/SKILL.md",
+      "computedHash": "b81106a3aa19f5aaa115d1ebf583a6ee19063555fa71da599cab932acb7b04db"
+    },
+    "kernel-cve-response": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/kernel-cve-response/SKILL.md",
+      "computedHash": "ae33768392b8bcad78fd99a3d8faf66844577db8f5d8b42f5e7ed858ace35833"
+    },
+    "ppg-e2e-test": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/ppg-e2e-test/SKILL.md",
+      "computedHash": "a0dea38487f967d0fd30c51108bb8c3a7733f100b7b2782bf90faab2838c6ada"
+    },
+    "ppg-grafana-dashboards": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/ppg-grafana-dashboards/SKILL.md",
+      "computedHash": "082dd31f414e2e0929b29a5a7945d2583d744a8a703ebcebf4ca69dbfca15d7d"
+    },
+    "ppg-investigate-stuck-instances": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/ppg-investigate-stuck-instances/SKILL.md",
+      "computedHash": "7c1ccd863c87bba44e303ddf8d8aea72cda1b8466c772b4f9a1be4b5aad3d0e1"
+    },
+    "ppg-tcp-proxy-ab-loadtest": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/ppg-tcp-proxy-ab-loadtest/SKILL.md",
+      "computedHash": "534d8dfb7fae6dd7a4047d86b5060a6824b431779bdc42e2864cb828ecbfda34"
+    },
+    "prisma-copy-review": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/prisma-copy-review/SKILL.md",
+      "computedHash": "b771fbba784769850841a0ec0497b11f17774d42456266c4211e6275dce81115"
+    },
+    "prisma-docs-voice": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/prisma-docs-voice/SKILL.md",
+      "computedHash": "c70b04ae13a705944c44e7b8d80a2252733f7e08219ce64db1bf7882eb33ab30"
+    },
+    "prisma-driver-adapter": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/prisma-driver-adapter/SKILL.md",
+      "computedHash": "ae532ed8a7727f388c090b4317bbf1edc9b51d7962a38b2838a13a239c191d4e"
+    },
     "prisma-next": {
       "source": "prisma/prisma-next",
       "ref": "v0.11.0",
@@ -81,7 +435,7 @@
       "source": "prisma/prisma-next",
       "sourceType": "github",
       "skillPath": "skills/upgrade/prisma-next-upgrade/SKILL.md",
-      "computedHash": "295c8c340c01a63dfd58688d23f033fa4d5acacfe1a60fcab158eab8b960b1b8"
+      "computedHash": "d51efa21021a2cdcd0e747e8ac1f31cdfb4f5678b019684c385893a59088b917"
     },
     "prisma-postgres": {
       "source": "prisma/skills",
@@ -94,6 +448,66 @@
       "sourceType": "github",
       "skillPath": "prisma-postgres-setup/SKILL.md",
       "computedHash": "5dbcf5a488d7cb7136340b86dcf781d6d92cf793f92c105ef644ac31ccac4d3b"
+    },
+    "prisma-product-messaging": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/prisma-product-messaging/SKILL.md",
+      "computedHash": "97150f3e45ca22f97faf280a856810f563ccc807dd0a25b7dd69cc2986004c11"
+    },
+    "prisma-scaffold-project-workspace": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/prisma-scaffold-project-workspace/SKILL.md",
+      "computedHash": "3c913b36e63652813ecbac1d7e7a7db90ba29df33a6a34b10dd35b0c6fb4df9b"
+    },
+    "prisma-social-voice": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/prisma-social-voice/SKILL.md",
+      "computedHash": "cd0c03c813e544b289d9fac40442b456e4adebb7c33a79e8c9c7dd6609922118"
+    },
+    "product-record-gotcha": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/product-record-gotcha/SKILL.md",
+      "computedHash": "5fd27cce10d0b56cdda0cac0c9fa816714734f55edc8f1ac1e628f876606da2b"
+    },
+    "project-docs": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/project-docs/SKILL.md",
+      "computedHash": "19339d1acc3edc78c3268e02185a38deff6c03c48f2be558f80f1880e4c5a356"
+    },
+    "querying-axiom": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/querying-axiom/SKILL.md",
+      "computedHash": "051f6ba1675a2fbab8f639597bbd393069ea0950d19167c477021af94f00de7b"
+    },
+    "review-prs-by-topic": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/review-prs-by-topic/SKILL.md",
+      "computedHash": "c6b6c02657ca6b63ae8be19cbd71eae5c96b973ccd8734d4657cd59920b9fbdc"
+    },
+    "sandboxed-executing-plans": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/sandboxed-executing-plans/SKILL.md",
+      "computedHash": "65ce40dd97ffbbef2f4e691138ab4cf2e168a5d481ae54a8f940f032be00d1eb"
+    },
+    "sandboxed-task": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/sandboxed-task/SKILL.md",
+      "computedHash": "468c6f7596045e5f4e9675d8253f32e956da1bb3f7c6c8ac4f134fe99dffbbc5"
+    },
+    "write-post-mortem": {
+      "source": "prisma/ignite",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/write-post-mortem/SKILL.md",
+      "computedHash": "59a9a94191c813518211162116267b2b3435e21e9136822aec3862ea8a8916a3"
     }
   }
 }

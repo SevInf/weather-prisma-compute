@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# configure-apparmor: Create AppArmor profile for bwrap (requires sudo)
+# Run this once on Ubuntu 23.10+ or systems with restricted user namespaces
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/.common.sh"
+
+echo "AppArmor configuration for bwrap"
+echo "================================"
+echo
+
+# Check if we're on a system that needs this
+if [[ ! -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+    warn "AppArmor userns restriction not detected on this system"
+    echo "  This script may not be needed. Testing bwrap..."
+    if test_bwrap_as_user; then
+        ok "bwrap already works"
+        exit 0
+    else
+        echo "  bwrap failed for another reason. Check system configuration."
+        exit 1
+    fi
+fi
+
+RESTRICT_VALUE=$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo "0")
+if [[ "$RESTRICT_VALUE" != "1" ]]; then
+    warn "AppArmor userns restriction is not enabled (value: $RESTRICT_VALUE)"
+    if test_bwrap_as_user; then
+        ok "bwrap already works"
+        exit 0
+    fi
+fi
+
+echo "AppArmor is restricting unprivileged user namespaces."
+echo "Creating AppArmor profile for bwrap..."
+echo
+
+# Check for existing profile
+if [[ -f /etc/apparmor.d/bwrap ]]; then
+    if test_bwrap_as_user; then
+        ok "bwrap works with existing profile at /etc/apparmor.d/bwrap"
+        exit 0
+    else
+        fail "Profile /etc/apparmor.d/bwrap exists but bwrap still fails"
+        echo "  Manually inspect or remove the existing profile, then re-run this script."
+        echo "  To remove: sudo rm /etc/apparmor.d/bwrap && sudo apparmor_parser -R bwrap"
+        exit 1
+    fi
+fi
+
+# Create the profile
+PROFILE_CONTENT='abi <abi/4.0>,
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/bwrap>
+}'
+
+echo "Creating /etc/apparmor.d/bwrap (requires sudo)..."
+echo "$PROFILE_CONTENT" | sudo tee /etc/apparmor.d/bwrap > /dev/null
+ok "Profile created"
+
+# Load the profile
+echo "Loading profile..."
+sudo apparmor_parser -r /etc/apparmor.d/bwrap
+ok "Profile loaded"
+
+# Verify
+echo
+echo "Verifying configuration..."
+if sudo aa-status 2>/dev/null | grep -q bwrap; then
+    ok "Profile appears in aa-status"
+else
+    warn "Profile not visible in aa-status (may still work)"
+fi
+
+if test_bwrap_as_user; then
+    ok "bwrap works correctly"
+    echo
+    echo -e "${GREEN}AppArmor configured successfully.${NC}"
+    echo "You can now use the sandbox."
+else
+    fail "bwrap still failing after configuration"
+    echo "  Check system logs: journalctl -xe | grep -i apparmor"
+    exit 1
+fi

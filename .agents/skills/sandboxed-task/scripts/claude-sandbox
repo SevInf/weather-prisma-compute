@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# claude-sandbox: Run Claude Code inside a bubblewrap jail
+# Run directly from ~/.claude/skills/sandboxed-task/scripts/
+#
+# Environment variables:
+#   SANDBOX_SOURCE_DIR      - Original project directory (read-write for git worktree, defaults to $PWD)
+#   SANDBOX_WORK_DIR        - Worktree directory (read-write, required)
+#   SANDBOX_EXTRA_BIND_DIRS - Comma-separated list of extra directories to bind read-only into the sandbox
+#   SANDBOX_NICE            - CPU niceness for the whole sandbox (default 19; 0 disables nice and ionice)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/.common.sh"
+
+SOURCE_DIR="${SANDBOX_SOURCE_DIR:-$PWD}"
+WORK_DIR="${SANDBOX_WORK_DIR:-}"
+CLAUDE_BIN="$(find_claude_bin)"
+
+if [[ -z "$CLAUDE_BIN" ]]; then
+    echo "Error: claude CLI not found" >&2
+    exit 1
+fi
+
+if [[ -z "$WORK_DIR" ]]; then
+    echo "Error: SANDBOX_WORK_DIR is required" >&2
+    echo "Create a worktree first: git worktree add /tmp/projectname-branch" >&2
+    exit 1
+fi
+
+if [[ ! -d "$WORK_DIR" ]]; then
+    echo "Error: SANDBOX_WORK_DIR does not exist: $WORK_DIR" >&2
+    exit 1
+fi
+
+# Inject claude.json via file descriptor (changes won't persist to host)
+exec 3<"$HOME/.claude.json"
+
+args=(
+    --hostname sandbox --unshare-uts
+    --unsetenv CLAUDECODE
+    --tmpfs /tmp
+    --dev /dev
+    --proc /proc
+    --ro-bind /bin /bin
+    --ro-bind /lib /lib
+    --ro-bind-try /lib32 /lib32
+    --ro-bind-try /lib64 /lib64
+    --ro-bind /usr /usr
+    --ro-bind /etc/alternatives /etc/alternatives
+    --ro-bind /etc/resolv.conf /etc/resolv.conf
+    --ro-bind /etc/ssl /etc/ssl
+    --ro-bind /etc/ld.so.cache /etc/ld.so.cache
+    --ro-bind /etc/ld.so.conf /etc/ld.so.conf
+    --ro-bind-try /etc/ld.so.conf.d /etc/ld.so.conf.d
+    --ro-bind /etc/localtime /etc/localtime
+    --ro-bind /etc/nsswitch.conf /etc/nsswitch.conf
+    --ro-bind /etc/hosts /etc/hosts
+    --ro-bind /etc/passwd /etc/passwd
+    --ro-bind /etc/group /etc/group
+    --ro-bind /usr/share/terminfo /usr/share/terminfo
+    --ro-bind /usr/share/ca-certificates /usr/share/ca-certificates
+    --ro-bind /usr/share/zoneinfo /usr/share/zoneinfo
+    --ro-bind-try "$HOME/.bashrc" "$HOME/.bashrc"
+    --ro-bind-try "$HOME/.profile" "$HOME/.profile"
+    --ro-bind-try "$HOME/.gitconfig" "$HOME/.gitconfig"
+    --ro-bind-try "$HOME/.ssh/known_hosts" "$HOME/.ssh/known_hosts"
+    --ro-bind-try "$HOME/.local" "$HOME/.local"
+    --ro-bind-try "$HOME/.nvm" "$HOME/.nvm"
+    --ro-bind-try "$HOME/.pyenv" "$HOME/.pyenv"
+    --ro-bind-try "$HOME/.cargo" "$HOME/.cargo"
+    --ro-bind-try "$HOME/.rustup" "$HOME/.rustup"
+    --bind "$HOME/.claude" "$HOME/.claude"
+    --bind "$HOME/.cache" "$HOME/.cache"
+    --file 3 "$HOME/.claude.json"
+    --bind "$SOURCE_DIR" "$SOURCE_DIR"
+    --bind "$WORK_DIR" "$WORK_DIR"
+)
+
+# allow callers to expose additional read-only directories into the sandbox
+if [[ -n "${SANDBOX_EXTRA_BIND_DIRS:-}" ]]; then
+    IFS=',' read -ra extra_dirs <<< "$SANDBOX_EXTRA_BIND_DIRS"
+    for dir in "${extra_dirs[@]}"; do
+        if [[ "$dir" != /* ]]; then
+            echo "Error: SANDBOX_EXTRA_BIND_DIRS entry is not an absolute path: $dir" >&2
+            exit 1
+        fi
+        if [[ ! -d "$dir" ]]; then
+            echo "Error: SANDBOX_EXTRA_BIND_DIRS entry does not exist or is not a directory: $dir" >&2
+            exit 1
+        fi
+        args+=(--ro-bind "$dir" "$dir")
+    done
+fi
+
+args+=(
+    --chdir "$WORK_DIR"
+    "$CLAUDE_BIN" --dangerously-skip-permissions "$@"
+)
+
+# bwrap isolates the filesystem, not the scheduler: deprioritize the whole
+# sandbox so its workload (builds, test loops, load generators) yields to
+# interactive use on the host. children inherit the niceness and unprivileged
+# processes cannot renice themselves back down, so the jail cannot escape it.
+nice_level="${SANDBOX_NICE:-19}"
+sched_wrap=()
+if [[ "$nice_level" != "0" ]]; then
+    sched_wrap+=(nice --adjustment "$nice_level")
+    if command -v ionice &>/dev/null; then
+        sched_wrap+=(ionice --class idle)
+    fi
+fi
+
+exec "${sched_wrap[@]}" /usr/bin/bwrap "${args[@]}"
