@@ -9,6 +9,7 @@ model Poi {
   updatedAt temporal.updatedAt()
 }
 
+
 enum IconModel {
   dwd_icon_d2
   dwd_icon_eu
@@ -32,4 +33,65 @@ model ModelRun {
   availableAt           DateTime // last run's availability instant
   updateIntervalSeconds Int
   checkedAt             DateTime // last upstream meta consult (late-run throttle)
+}
+
+
+// BetterAuth identity tables. Their shape (table/column names, types,
+// nullability, defaults) mirrors what BetterAuth expects at runtime — it
+// reads and writes these tables directly, so name fidelity is load-bearing.
+// Provisioned by Prisma Next only; the BetterAuth CLI never applies DDL.
+// Ids are application-generated strings, not autoincrement ints.
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+
+  @@index([identifier])
 }
