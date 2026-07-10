@@ -4,8 +4,8 @@
 
 ## Summary
 
-- **Current verdict:** D4 R1 — SATISFIED (slice re-closed)
-- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package)
+- **Current verdict:** D5 R1 — SATISFIED (slice re-closed)
+- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim)
 - **DoD scoreboard totals:** 7 PASS / 0 FAIL / 0 NOT VERIFIED
 - **Open findings:** 0 (F1, F2 resolved at `35f3e1e`)
 - **Open escalations:** 0
@@ -130,6 +130,18 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 **Findings:** none.
 
 **For orchestrator:** Flag A accepted — committed-end-state reading is right (scope's concern is the PR's contract surface; byte-exact restore verified on disk; the only CLI-sanctioned way to anchor main's contract, and loudly flagged). Flag B accepted — the baseline is PN's structural precondition for a non-null-origin edge (`HASH_NOT_IN_GRAPH` otherwise) and directly serves the brief's replayability purpose. D1's item-for-user (no migration package) is now resolved. Route the five CLI-vs-skill deviations to `learnings.md` alongside the earlier PN gotchas — several look upstream-worthy (`--from ./path` dead vs help text; `migration new` silently ignoring `--from`; dirty-ref auto-baseline anchored at destination producing a destructive scratch plan).
+
+### D5 R1 — SATISFIED (slice re-closed)
+
+**Scope:** D5 comment-trim. Commit `b43947c` (3 hand-authored files, 2 insertions / 10 deletions).
+
+**Tasks:** all three completed-when conditions clean — every hunk verified comment/blank-only in the three named files; build green; report lists each removal with rubric category and each borderline keep with rationale (all seven removals verified against categories 1–4; displaced invariants confirmed still documented at their source: malformed→missing at `parseHourlyBlock`, ≤3-fetch on the `ModelClock` class doc).
+
+**AC delta:** none — totals hold 7 PASS / 0 FAIL / 0 NOT VERIFIED; DoD-6 evidence extends to `b43947c`. Category-2 sweep over all PR-added comments (`main...HEAD`): sole hit is the previously-adjudicated exempt `ICON-D2` domain term; no spec/dispatch/F-number/`projects/` references survive. Emit stability accepted (storageHash `6db32dad` unchanged per report; `git status src/` clean, refs pin unchanged — consistent).
+
+**Findings:** none.
+
+**For orchestrator:** nothing new; `5fda882` (.gitattributes) not reviewed per scope, no defect incidentally observed.
 
 ## Orchestrator notes
 

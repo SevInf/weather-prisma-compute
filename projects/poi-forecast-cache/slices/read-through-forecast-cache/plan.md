@@ -32,9 +32,16 @@
 - **Hands to:** Slice DoD unchanged plus a replayable migration history for non-dev environments — closes the reviewer's D1 item-for-user ("no migration package").
 - **Focus:** `migrations/**` + any ref artefacts the PN flow writes. Out: contract source (unchanged), all runtime code.
 
+### Dispatch 5: comment-trim _(added post-PR-open by operator decision, 2026-07-10)_
+
+- **Outcome:** Comments added by this PR in hand-authored files are trimmed to only those explaining genuinely non-obvious decisions. Removed: (a) doc comments narrating implementation step-by-step; (b) references to transient artifacts, specs, or overruled decisions; (c) restatements of how TypeScript or third-party libraries work; (d) line comments merely describing the next line. Generated / hash-pinned files (`contract.json`, `contract.d.ts`, `migrations/**`) untouched.
+- **Builds on:** D1–D4's committed code.
+- **Hands to:** Slice DoD unchanged; a leaner review surface.
+- **Focus:** `src/prisma/contract.prisma`, `src/services/model-clock.ts`, `src/services/weather-service.ts` — comment lines only; no behavioural edits.
+
 ## Sizing
 
-Dispatch-INVEST: all four pass. D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
+Dispatch-INVEST: all five pass (D5 = S — mechanical editorial pass with a crisp keep/cut rubric). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
 
 ## Open items
 
