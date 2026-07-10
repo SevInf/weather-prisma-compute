@@ -4,8 +4,8 @@
 
 ## Summary
 
-- **Current verdict:** D6 R2 — SATISFIED (slice re-closed)
-- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim), D6 (services/repositories split + functional core)
+- **Current verdict:** D7 R1 — SATISFIED (slice re-closed)
+- **Dispatches SATISFIED:** D1 (cache-table-contract), D2 (model-clock-module), D3 (read-through-wiring), D4 (migration-package), D5 (comment-trim), D6 (services/repositories split + functional core), D7 (PR-review fixes)
 - **DoD scoreboard totals:** 7 PASS / 0 FAIL / 0 NOT VERIFIED
 - **Open findings:** 0 (F1, F2 resolved at `35f3e1e`)
 - **Open escalations:** 0
@@ -27,6 +27,8 @@
 Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRAL — <link>` / `OUT OF SCOPE`.
 
 > **D6 re-evidencing note:** `c16d807` + `efaa333` relocated the read-through behaviour into `src/services/cached-forecast-source.ts` (+ `src/repositories/*`) with zero behaviour change (verified phase-by-phase on disk; log/warn wording byte-preserved). All D3-era behaviour gates re-run at `efaa333`: dev-server smoke, cold path, stub-based grace check — identical outcomes. DoD-1…DoD-4, DoD-6, and SL-1 evidence is re-anchored at `efaa333` accordingly.
+>
+> **D7 re-evidencing note:** `a9eb765` (PR-review fixes: enum `model` column via additive CHECK, branded `PoiId`, `#private` members) re-ran all behaviour gates with identical outcomes and unchanged log wording — the smoke test's first GET exercised the live late-run grace path in production conditions. DoD-5's migration graph now chains three packages (`null → eecde426 → 6db32dad → 5b7560…`), `migration status` clean, refs pin advanced consistently. Behaviour rows' evidence extends to `a9eb765`.
 
 ## Subagent IDs
 
@@ -168,6 +170,18 @@ Status values: `PASS` / `FAIL` / `NOT VERIFIED — <reason>` / `ACCEPTED DEFERRA
 **Findings:** none.
 
 **For orchestrator:** Flag A accepted — `failedCount` is error fidelity the behaviour contract *requires* (best-effort batch preserving partial success = D3 semantics; the warn *response* stays in the service; repo still throws per the pin). Flag B accepted — the interfaces-only pin targets effectful seams; `coveringModel` is deterministic geometry over hardcoded constants, not among the spec's three composed dependencies, and the stub-based grace gate needed no geometry stub — injecting it would be ceremony. Minor: implementer's report says "file 289 lines"; actual is 269 — report-only inaccuracy, no action.
+
+### D7 R1 — SATISFIED (slice re-closed)
+
+**Scope:** D7 PR-review fixes (six operator comments). Commit `a9eb765` (19 files).
+
+**Tasks:** all six comments verified answered as written: (1) PSL domain enum `IconModel` over `pg/text@1`, `model IconModel`, lowered as additive CHECK — migration package verified on disk: single `addCheckConstraint` op, values = enum members exactly, no index duplicate (hand-prune confirmed absent), nothing destructive, `from/to` chains D4's edge `6db32dad → 5b7560…`, refs pin matches, ops.json consistent; (2) BBOX provenance block restored (per-model URL, transcribed values, dated, ordering); (3) sentinel removed, `ModelBbox` non-null, explicit fallback return; (4) `rg '\bprivate\b'` zero hits across services+repos — fields and methods `#`-private; (5) `partitionByFreshness` takes `ForecastCacheRow[]`, shell passes `rows ?? []`, DB-health stat unchanged; (6) branded `PoiId` via unique symbol — sole `as PoiId` inside the `poiId()` constructor, applied at ForecastPoint/map-keys/repo types with ORM output re-branded, route byte-untouched, `getForecasts` contract unchanged. Gates re-run green (smoke incidentally exercised the live late-run grace path).
+
+**AC delta:** none — totals hold 7 PASS / 0 FAIL / 0 NOT VERIFIED; DoD-5/DoD-6 + behaviour rows extend to `a9eb765` (note above table). Scans: zero hits.
+
+**Findings:** none. (`IconModel` TS union remains hand-declared alongside the now-emitted contract enum — structurally identical, self-policing via the lane's types at the repo boundary; the brief's "align if the lane surfaces one" is satisfied in substance. Not a finding.)
+
+**For orchestrator:** new gotcha candidate for the ledger — the planner re-plans the FK-implied index (`poiForecast_poiId_idx`) on unrelated edges because the contract records `indexes: []`; replay would fail on duplicate. Skill-sanctioned hand-edit + self-emit flow handled it; worth upstreaming with the D4 batch.
 
 ## Orchestrator notes
 

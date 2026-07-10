@@ -46,9 +46,16 @@
 - **Hands to:** Slice DoD unchanged; a layered, stub-testable forecast path.
 - **Focus:** `src/services/**` + new `src/repositories/**` (layout implementer's call); comment discipline per D5 R2's telegraphic bar. Out: route, contract, migrations, behaviour changes.
 
+### Dispatch 7: pr-review-fixes _(added 2026-07-10; operator's GitHub review on PR #1)_
+
+- **Outcome:** All six operator review comments addressed in code: (1) `PoiForecast.model` becomes a PSL enum; (2) BBOX provenance documented explicitly on `MODEL_DOMAINS` (values from each model's meta.json `crs_wkt` BBOX); (3) the `bbox: null` sentinel entry removed — `coveringModel` ends with the global fallback return instead; (4) ES `#private` names replace TS `private` across PR-added classes; (5) `partitionByFreshness` no longer accepts `null` rows (shell passes `rows ?? []`); (6) branded `PoiId` type used for POI ids across the PR-added forecast path, cast only at boundaries. Behaviour unchanged; contract change flows through emit + migration history + dev DB.
+- **Builds on:** D1–D6's committed state, incl. D4's migration graph (a new edge migration will extend it).
+- **Hands to:** Slice DoD unchanged; review comments each resolvable by the operator.
+- **Focus:** the six comments only. No GitHub interactions (operator law: no replies on his behalf).
+
 ## Sizing
 
-Dispatch-INVEST: all six pass (D5 = S — mechanical editorial pass; D6 = M — structural refactor with pinned interfaces and behaviour-preservation gates). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
+Dispatch-INVEST: all seven pass (D7 = M — six bounded review fixes, one of which is a contract change with a migration) (D5 = S — mechanical editorial pass; D6 = M — structural refactor with pinned interfaces and behaviour-preservation gates). D1 = S (surgical substrate change), D2 = M (self-contained module with external-API contract), D3 = M (consumer wiring + degradation paths + manual QA gate), D4 = S (mechanical PN-CLI flow with a documented reconcile step). Non-linearity is confined to D3's dual dependency, surfaced above.
 
 ## Open items
 
