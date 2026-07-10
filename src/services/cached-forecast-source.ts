@@ -17,7 +17,6 @@ import type {
 } from "./forecast-source";
 import {
 	coveringModel,
-	GRACE_MS,
 	modelClock,
 	type IconModel,
 	type ModelRunClock,
@@ -67,27 +66,28 @@ export class CachedForecastSource implements ForecastSource {
 		this.#clock = clock;
 	}
 
-	/** Fresh row (`now < staleAt` AND fetched today UTC) serves without upstream fetch.
-	 * DB failure → direct fetch; upstream failure → expired rows; missing entry = unavailable. */
+	/** Fresh row (open run window AND `fetchedAt >= availableAt` AND fetched today UTC)
+	 * serves without upstream fetch. DB failure → direct fetch; upstream failure →
+	 * expired rows; missing entry = unavailable. */
 	async hourlyBlocks(points: ForecastPoint[]): Promise<Map<PoiId, HourlyBlock> | null> {
 		if (points.length === 0) return new Map();
 		const now = new Date();
 
 		const rows = await this.#readCache(points.map((p) => p.id));
-		const { fresh, expired, toRefresh } = partitionByFreshness(points, rows ?? [], now);
-
-		const modelByPoi = attributeModels(toRefresh);
-		const staleAtByModel: StaleAtByModel = toRefresh.length
-			? await this.#clock.nextStaleAt(modelByPoi.values())
-			: new Map();
+		const modelByPoi = attributeModels(points);
+		const staleAtByModel = await this.#clock.nextStaleAt(modelByPoi.values());
+		const { fresh, expired, toRefresh } = partitionByFreshness(
+			points,
+			rows ?? [],
+			modelByPoi,
+			staleAtByModel,
+			now,
+		);
 		const { graceServed, toFetch } = triageRefresh(toRefresh, modelByPoi, staleAtByModel, expired);
 
 		const fetched = toFetch.length ? await this.#upstream.hourlyBlocks(toFetch) : null;
 		if (rows && fetched?.size) {
-			await this.#persistWrites(planCacheWrites(toFetch, fetched, modelByPoi, staleAtByModel, now));
-		}
-		if (rows && graceServed.size) {
-			await this.#extendGrace([...graceServed], new Date(now.getTime() + GRACE_MS));
+			await this.#persistWrites(planCacheWrites(toFetch, fetched, modelByPoi, now));
 		}
 
 		const { served, expiredFallback } = assembleServing(points, fresh, fetched, expired, graceServed);
@@ -117,19 +117,13 @@ export class CachedForecastSource implements ForecastSource {
 			console.warn(`forecast cache: ${failed} upsert(s) failed, serving uncached`);
 		}
 	}
-
-	async #extendGrace(poiIds: PoiId[], until: Date): Promise<void> {
-		try {
-			await this.#cache.extendStaleAt(poiIds, until);
-		} catch (err) {
-			console.warn("forecast cache: grace extension failed:", err);
-		}
-	}
 }
 
 function partitionByFreshness(
 	points: ForecastPoint[],
 	rows: ForecastCacheRow[],
+	modelByPoi: Map<PoiId, IconModel>,
+	staleAtByModel: StaleAtByModel,
 	now: Date,
 ): FreshnessPartition {
 	const rowById = new Map<PoiId, ForecastCacheRow>();
@@ -142,14 +136,16 @@ function partitionByFreshness(
 		if (!row) continue;
 		const hourly = parseHourlyBlock(row.hourly);
 		if (!hourly) continue;
-		(isFresh(row, now) ? fresh : expired).set(p.id, hourly);
+		const model = modelByPoi.get(p.id);
+		const staleness = model != null ? (staleAtByModel.get(model) ?? null) : null;
+		(isFresh(row, staleness, now) ? fresh : expired).set(p.id, hourly);
 	}
 	return { fresh, expired, toRefresh: points.filter((p) => !fresh.has(p.id)) };
 }
 
-function attributeModels(toRefresh: ForecastPoint[]): Map<PoiId, IconModel> {
+function attributeModels(points: ForecastPoint[]): Map<PoiId, IconModel> {
 	const modelByPoi = new Map<PoiId, IconModel>();
-	for (const p of toRefresh) {
+	for (const p of points) {
 		modelByPoi.set(p.id, coveringModel(p.latitude, p.longitude));
 	}
 	return modelByPoi;
@@ -181,23 +177,13 @@ function planCacheWrites(
 	toFetch: ForecastPoint[],
 	fetched: Map<PoiId, HourlyBlock>,
 	modelByPoi: Map<PoiId, IconModel>,
-	staleAtByModel: StaleAtByModel,
 	now: Date,
 ): ForecastCacheWrite[] {
-	const grace = new Date(now.getTime() + GRACE_MS);
 	return toFetch.flatMap((p) => {
 		const hourly = fetched.get(p.id);
 		const model = modelByPoi.get(p.id);
 		if (!hourly || !model) return [];
-		return [
-			{
-				poiId: p.id,
-				model,
-				hourly,
-				fetchedAt: now,
-				staleAt: staleAtByModel.get(model)?.staleAt ?? grace,
-			},
-		];
+		return [{ poiId: p.id, model, hourly, fetchedAt: now }];
 	});
 }
 
@@ -236,12 +222,19 @@ function formatDecisionLine(s: DecisionStats): string {
 	return `forecast cache: ${parts.join(", ")}`;
 }
 
-// Same-UTC-day rule: yesterday's 2-day forecast window may miss tomorrow's sunrise.
-function isFresh(row: ForecastCacheRow, now: Date): boolean {
-	const staleAtMs = row.staleAt.getTime();
+// Fresh = clock has a real (non-grace) run window open, the row was fetched
+// from that run (run currency), and same-UTC-day (yesterday's 2-day forecast
+// window may miss tomorrow's sunrise).
+function isFresh(
+	row: ForecastCacheRow,
+	staleness: ModelStaleness | null,
+	now: Date,
+): boolean {
+	if (!staleness || staleness.graceExtended) return false;
+	if (now.getTime() >= staleness.staleAt.getTime()) return false;
 	const fetchedMs = row.fetchedAt.getTime();
-	if (!Number.isFinite(staleAtMs) || !Number.isFinite(fetchedMs)) return false;
-	if (now.getTime() >= staleAtMs) return false;
+	if (!Number.isFinite(fetchedMs)) return false;
+	if (fetchedMs < staleness.availableAt.getTime()) return false;
 	return (
 		new Date(fetchedMs).toISOString().slice(0, 10) ===
 		now.toISOString().slice(0, 10)

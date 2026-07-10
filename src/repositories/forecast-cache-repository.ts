@@ -8,7 +8,6 @@ export type ForecastCacheRow = {
 	model: IconModel;
 	hourly: unknown;
 	fetchedAt: Date;
-	staleAt: Date;
 };
 
 export type ForecastCacheWrite = {
@@ -16,7 +15,6 @@ export type ForecastCacheWrite = {
 	model: IconModel;
 	hourly: HourlyBlock;
 	fetchedAt: Date;
-	staleAt: Date;
 };
 
 export class ForecastCacheWriteError extends Error {
@@ -28,7 +26,6 @@ export class ForecastCacheWriteError extends Error {
 export interface ForecastCacheRepository {
 	findByPoiIds(ids: PoiId[]): Promise<ForecastCacheRow[]>;
 	upsertMany(rows: ForecastCacheWrite[]): Promise<void>;
-	extendStaleAt(poiIds: PoiId[], until: Date): Promise<void>;
 }
 
 export class PrismaForecastCacheRepository implements ForecastCacheRepository {
@@ -50,12 +47,6 @@ export class PrismaForecastCacheRepository implements ForecastCacheRepository {
 		);
 		const failed = results.filter((r) => r.status === "rejected").length;
 		if (failed > 0) throw new ForecastCacheWriteError(failed);
-	}
-
-	async extendStaleAt(poiIds: PoiId[], until: Date): Promise<void> {
-		await db.orm.public.PoiForecast.where((f) => f.poiId.in(poiIds)).update({
-			staleAt: until,
-		});
 	}
 }
 

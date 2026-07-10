@@ -1,7 +1,12 @@
 // Covering-model attribution + next-run clock for DWD ICON. BBOX/cadence source:
 // https://api.open-meteo.com/data/{dwd_icon_d2,dwd_icon_eu,dwd_icon}/static/meta.json
 
-const OPEN_METEO_DATA_URL = "https://api.open-meteo.com/data";
+import { cachedModelMetaConnector } from "./cached-model-meta-connector";
+import {
+	GRACE_MS,
+	type ModelMeta,
+	type ModelMetaConnector,
+} from "./model-meta-connector";
 
 export type IconModel = "dwd_icon_d2" | "dwd_icon_eu" | "dwd_icon";
 
@@ -29,20 +34,12 @@ const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox }> = [
 	},
 ];
 
-// Re-check window when a run is late or its meta is unknown.
-export const GRACE_MS = 10 * 60 * 1000;
-
 /** `graceExtended`: the run is late and `staleAt` is only a re-check window —
  * extend existing data rather than refetch; fetch only when rowless. */
 export type ModelStaleness = {
 	staleAt: Date;
 	graceExtended: boolean;
-};
-
-// Epoch seconds.
-type ModelMeta = {
-	last_run_availability_time: number;
-	update_interval_seconds: number;
+	availableAt: Date;
 };
 
 /** Covering model, seamless preference order: D2 → EU → global. Pure geometry. */
@@ -66,12 +63,12 @@ export interface ModelRunClock {
 	): Promise<Map<IconModel, ModelStaleness | null>>;
 }
 
-/** Per-model run clock; one meta fetch per unique model (≤ 3 per cycle). */
+/** Per-model run clock; one connector consult per unique model (≤ 3 per cycle). */
 export class ModelClock implements ModelRunClock {
-	#baseUrl: string;
+	#meta: ModelMetaConnector;
 
-	constructor(baseUrl: string = OPEN_METEO_DATA_URL) {
-		this.#baseUrl = baseUrl;
+	constructor(meta: ModelMetaConnector) {
+		this.#meta = meta;
 	}
 
 	/** Late run → grace-marked `now + ~10 min`; meta failure → `null` ("unknown",
@@ -84,46 +81,32 @@ export class ModelClock implements ModelRunClock {
 		const results = await Promise.all(
 			unique.map(async (model) => ({
 				model,
-				staleness: await this.#fetchStaleAt(model),
+				meta: await this.#meta.fetchMeta(model),
 			})),
 		);
-		for (const { model, staleness } of results) {
-			out.set(model, staleness);
+		const nowMs = Date.now();
+		for (const { model, meta } of results) {
+			out.set(model, meta ? deriveStaleness(meta, nowMs) : null);
 		}
 		return out;
 	}
-
-	async #fetchStaleAt(model: IconModel): Promise<ModelStaleness | null> {
-		let meta: ModelMeta;
-		try {
-			const res = await fetch(`${this.#baseUrl}/${model}/static/meta.json`, {
-				// A cached meta.json would hide newly published runs.
-				cache: "no-store",
-			});
-			if (!res.ok) {
-				console.warn(`Open-Meteo meta for ${model} returned ${res.status}`);
-				return null;
-			}
-			meta = (await res.json()) as ModelMeta;
-		} catch (err) {
-			console.warn(`Open-Meteo meta fetch for ${model} failed:`, err);
-			return null;
-		}
-
-		const availability = meta.last_run_availability_time;
-		const interval = meta.update_interval_seconds;
-		if (!Number.isFinite(availability) || !Number.isFinite(interval)) {
-			console.warn(`Open-Meteo meta for ${model} has unexpected shape`);
-			return null;
-		}
-
-		const staleAtMs = (availability + interval) * 1000;
-		const now = Date.now();
-		if (staleAtMs <= now) {
-			return { staleAt: new Date(now + GRACE_MS), graceExtended: true };
-		}
-		return { staleAt: new Date(staleAtMs), graceExtended: false };
-	}
 }
 
-export const modelClock: ModelRunClock = new ModelClock();
+function deriveStaleness(meta: ModelMeta, nowMs: number): ModelStaleness {
+	const staleAtMs =
+		meta.availableAt.getTime() + meta.updateIntervalSeconds * 1000;
+	if (staleAtMs <= nowMs) {
+		return {
+			staleAt: new Date(nowMs + GRACE_MS),
+			graceExtended: true,
+			availableAt: meta.availableAt,
+		};
+	}
+	return {
+		staleAt: new Date(staleAtMs),
+		graceExtended: false,
+		availableAt: meta.availableAt,
+	};
+}
+
+export const modelClock: ModelRunClock = new ModelClock(cachedModelMetaConnector);

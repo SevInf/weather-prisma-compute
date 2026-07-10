@@ -1,0 +1,125 @@
+[
+  {
+    "id": "dropColumn.poiForecast.staleAt",
+    "label": "Drop column \"staleAt\" from \"poiForecast\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "staleAt",
+        "table": "poiForecast"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"staleAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "poiForecast",
+          "staleAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"staleAt\"",
+        "sql": "ALTER TABLE \"public\".\"poiForecast\" DROP COLUMN \"staleAt\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"staleAt\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "poiForecast",
+          "staleAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.modelRun",
+    "label": "Create table \"modelRun\"",
+    "summary": "Creates table \"modelRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "modelRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"modelRun\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"modelRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"modelRun\"",
+        "sql": "CREATE TABLE \"public\".\"modelRun\" (\n  \"availableAt\" timestamptz NOT NULL,\n  \"checkedAt\" timestamptz NOT NULL,\n  \"model\" text NOT NULL,\n  \"updateIntervalSeconds\" int4 NOT NULL,\n  PRIMARY KEY (\"model\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"modelRun\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"modelRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.modelRun.modelRun_model_check",
+    "label": "Add check constraint \"modelRun_model_check\" on \"modelRun\".\"model\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "modelRun_model_check",
+        "table": "modelRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"modelRun_model_check\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "modelRun_model_check",
+          "public",
+          "\"public\".\"modelRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"modelRun_model_check\"",
+        "sql": "ALTER TABLE \"public\".\"modelRun\" ADD CONSTRAINT \"modelRun_model_check\" CHECK (\"model\" IN ('dwd_icon_d2', 'dwd_icon_eu', 'dwd_icon'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"modelRun_model_check\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "modelRun_model_check",
+          "public",
+          "\"public\".\"modelRun\""
+        ]
+      }
+    ]
+  }
+]
