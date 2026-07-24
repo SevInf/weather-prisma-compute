@@ -1,6 +1,6 @@
 import { db } from "@/prisma/db";
-import { poiId, type HourlyBlock, type PoiId } from "@/services/forecast-source";
-import type { IconModel } from "@/services/model-clock";
+import { poiId, type HourlyBlock, type PoiId } from "./forecast-repository";
+import type { IconModel } from "../model-meta/model-meta-repository";
 
 // PoiForecast row as the ORM returns it: timestamptz decodes to `Date`, not string.
 export type ForecastCacheRow = {
@@ -49,6 +49,3 @@ export class PrismaForecastCacheRepository implements ForecastCacheRepository {
 		if (failed > 0) throw new ForecastCacheWriteError(failed);
 	}
 }
-
-export const forecastCacheRepository: ForecastCacheRepository =
-	new PrismaForecastCacheRepository();

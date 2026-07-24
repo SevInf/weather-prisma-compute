@@ -1,14 +1,12 @@
-// Covering-model attribution + next-run clock for DWD ICON. BBOX/cadence source:
-// https://api.open-meteo.com/data/{dwd_icon_d2,dwd_icon_eu,dwd_icon}/static/meta.json
-
-import { cachedModelMetaConnector } from "./cached-model-meta-connector";
+import type { ForecastPoint } from "@/repositories/forecast/forecast-repository";
 import {
 	GRACE_MS,
+	type IconModel,
 	type ModelMeta,
-	type ModelMetaConnector,
-} from "./model-meta-connector";
+	type ModelMetaRepository,
+} from "@/repositories/model-meta/model-meta-repository";
 
-export type IconModel = "dwd_icon_d2" | "dwd_icon_eu" | "dwd_icon";
+export type { IconModel } from "@/repositories/model-meta/model-meta-repository";
 
 type ModelBbox = {
 	latMin: number;
@@ -17,12 +15,6 @@ type ModelBbox = {
 	lonMax: number;
 };
 
-// Domain BBOXes transcribed from each model's meta.json `crs_wkt`
-// `BBOX[latMin, lonMin, latMax, lonMax]` (fetched 2026-07-10):
-//   https://api.open-meteo.com/data/dwd_icon_d2/static/meta.json → BBOX[43.18, -3.94, 58.08, 20.34] (~2 km)
-//   https://api.open-meteo.com/data/dwd_icon_eu/static/meta.json → BBOX[29.5, -23.5, 70.5, 62.5] (~7 km)
-//   https://api.open-meteo.com/data/dwd_icon/static/meta.json → global (~11 km; fallback in coveringModel)
-// Highest resolution first; first containing BBOX wins (icon_seamless order).
 const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox }> = [
 	{
 		model: "dwd_icon_d2",
@@ -34,15 +26,12 @@ const MODEL_DOMAINS: ReadonlyArray<{ model: IconModel; bbox: ModelBbox }> = [
 	},
 ];
 
-/** `graceExtended`: the run is late and `staleAt` is only a re-check window —
- * extend existing data rather than refetch; fetch only when rowless. */
 export type ModelStaleness = {
 	staleAt: Date;
 	graceExtended: boolean;
 	availableAt: Date;
 };
 
-/** Covering model, seamless preference order: D2 → EU → global. Pure geometry. */
 export function coveringModel(latitude: number, longitude: number): IconModel {
 	for (const { model, bbox } of MODEL_DOMAINS) {
 		if (
@@ -58,21 +47,23 @@ export function coveringModel(latitude: number, longitude: number): IconModel {
 }
 
 export interface ModelRunClock {
+	modelFor(point: ForecastPoint): IconModel;
 	nextStaleAt(
 		models: Iterable<IconModel>,
 	): Promise<Map<IconModel, ModelStaleness | null>>;
 }
 
-/** Per-model run clock; one connector consult per unique model (≤ 3 per cycle). */
 export class ModelClock implements ModelRunClock {
-	#meta: ModelMetaConnector;
+	#meta: ModelMetaRepository;
 
-	constructor(meta: ModelMetaConnector) {
+	constructor(meta: ModelMetaRepository) {
 		this.#meta = meta;
 	}
 
-	/** Late run → grace-marked `now + ~10 min`; meta failure → `null` ("unknown",
-	 * treat as grace) — never a throw. */
+	modelFor(point: ForecastPoint): IconModel {
+		return coveringModel(point.latitude, point.longitude);
+	}
+
 	async nextStaleAt(
 		models: Iterable<IconModel>,
 	): Promise<Map<IconModel, ModelStaleness | null>> {
@@ -108,5 +99,3 @@ function deriveStaleness(meta: ModelMeta, nowMs: number): ModelStaleness {
 		availableAt: meta.availableAt,
 	};
 }
-
-export const modelClock: ModelRunClock = new ModelClock(cachedModelMetaConnector);

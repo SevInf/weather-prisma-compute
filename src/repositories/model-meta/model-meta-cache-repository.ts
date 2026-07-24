@@ -1,20 +1,14 @@
-// Read-through clock cache: ModelRun rows serve meta until the run window
-// closes; upstream consults throttle to ~1 per grace window when a run is late.
-
-import {
-	modelRunRepository,
-	type ModelRunRepository,
-	type ModelRunRow,
-} from "@/repositories/model-run-repository";
-import { openMeteoModelMetaRepository } from "@/repositories/open-meteo-model-meta-repository";
-import type { IconModel } from "./model-clock";
+import type {
+	ModelRunRepository,
+	ModelRunRow,
+} from "../model-run/model-run-repository";
 import {
 	GRACE_MS,
+	type IconModel,
 	type ModelMeta,
-	type ModelMetaConnector,
-} from "./model-meta-connector";
+	type ModelMetaRepository,
+} from "./model-meta-repository";
 
-// Current while the run window is open OR a consult happened within GRACE_MS.
 function isCurrent(row: ModelRunRow, now: Date): boolean {
 	const runFreshUntil =
 		row.availableAt.getTime() + row.updateIntervalSeconds * 1000;
@@ -31,16 +25,15 @@ function toMeta(row: ModelRunRow): ModelMeta {
 	};
 }
 
-export class CachedModelMetaConnector implements ModelMetaConnector {
+export class ModelMetaCacheRepository implements ModelMetaRepository {
 	#runs: ModelRunRepository;
-	#upstream: ModelMetaConnector;
+	#upstream: ModelMetaRepository;
 
-	constructor(runs: ModelRunRepository, upstream: ModelMetaConnector) {
+	constructor(runs: ModelRunRepository, upstream: ModelMetaRepository) {
 		this.#runs = runs;
 		this.#upstream = upstream;
 	}
 
-	/** Upstream failure with a row present → stale row's meta; rowless → null. */
 	async fetchMeta(model: IconModel): Promise<ModelMeta | null> {
 		const now = new Date();
 		const row = await this.#readRow(model);
@@ -52,7 +45,6 @@ export class CachedModelMetaConnector implements ModelMetaConnector {
 			return fetched;
 		}
 		if (row) {
-			// Bump checkedAt so outage consults also throttle to ~1 per GRACE_MS.
 			await this.#persist({ ...row, checkedAt: now });
 			return toMeta(row);
 		}
@@ -76,6 +68,3 @@ export class CachedModelMetaConnector implements ModelMetaConnector {
 		}
 	}
 }
-
-export const cachedModelMetaConnector: ModelMetaConnector =
-	new CachedModelMetaConnector(modelRunRepository, openMeteoModelMetaRepository);

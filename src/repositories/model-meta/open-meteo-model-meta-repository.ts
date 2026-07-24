@@ -1,8 +1,8 @@
-import type { IconModel } from "@/services/model-clock";
 import type {
+	IconModel,
 	ModelMeta,
-	ModelMetaConnector,
-} from "@/services/model-meta-connector";
+	ModelMetaRepository,
+} from "./model-meta-repository";
 
 const OPEN_METEO_DATA_URL = "https://api.open-meteo.com/data";
 
@@ -12,7 +12,7 @@ type WireMeta = {
 	update_interval_seconds: number;
 };
 
-export class OpenMeteoModelMetaRepository implements ModelMetaConnector {
+export class OpenMeteoModelMetaRepository implements ModelMetaRepository {
 	#baseUrl: string;
 
 	constructor(baseUrl: string = OPEN_METEO_DATA_URL) {
@@ -48,6 +48,3 @@ export class OpenMeteoModelMetaRepository implements ModelMetaConnector {
 		};
 	}
 }
-
-export const openMeteoModelMetaRepository: ModelMetaConnector =
-	new OpenMeteoModelMetaRepository();

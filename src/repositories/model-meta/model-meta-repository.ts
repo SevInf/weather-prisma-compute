@@ -1,6 +1,5 @@
-import type { IconModel } from "./model-clock";
+export type IconModel = "dwd_icon_d2" | "dwd_icon_eu" | "dwd_icon";
 
-// Re-check window when a run is late or its meta is unknown.
 export const GRACE_MS = 10 * 60 * 1000;
 
 export type ModelMeta = {
@@ -8,6 +7,6 @@ export type ModelMeta = {
 	updateIntervalSeconds: number;
 };
 
-export interface ModelMetaConnector {
+export interface ModelMetaRepository {
 	fetchMeta(model: IconModel): Promise<ModelMeta | null>;
 }

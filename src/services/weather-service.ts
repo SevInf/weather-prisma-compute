@@ -1,5 +1,5 @@
 // WeatherService — per-request meteorology (fog probability, sunrise/sunset
-// beauty) over hourly blocks from an injected ForecastSource.
+// beauty) over hourly blocks from an injected forecast repository.
 //
 // References:
 // - Open-Meteo DWD ICON API: https://open-meteo.com/en/docs/dwd-api
@@ -10,8 +10,8 @@
 //   Meteorol. Climatol., 46(8): 1141–1168). We model probability as a
 //   quadratic falloff cutting off at 4°C.
 
-import { cachedForecastSource } from "./cached-forecast-source";
-import { poiId, type ForecastSource, type HourlyBlock } from "./forecast-source";
+import { poiId, type HourlyBlock } from "@/repositories/forecast/forecast-repository";
+import type { ForecastProvider } from "./forecast-service";
 
 export type ForecastInput = {
 	id: number;
@@ -60,9 +60,9 @@ const BEAUTY_HIGH_MIN = 80;
  * be swapped (or mocked in tests) without touching call sites.
  */
 export class WeatherService {
-	#source: ForecastSource;
+	#source: ForecastProvider;
 
-	constructor(source: ForecastSource) {
+	constructor(source: ForecastProvider) {
 		this.#source = source;
 	}
 
@@ -89,8 +89,6 @@ export class WeatherService {
 	}
 }
 
-/** Default shared instance; the app talks to one weather provider. */
-export const weatherService = new WeatherService(cachedForecastSource);
 
 function summarize(h: HourlyBlock, input: ForecastInput): PoiForecast {
 	const fog: FogForecast[] = [];

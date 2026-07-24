@@ -1,5 +1,5 @@
 import { db } from "@/prisma/db";
-import type { IconModel } from "@/services/model-clock";
+import type { IconModel } from "../model-meta/model-meta-repository";
 
 export type ModelRunRow = {
 	model: IconModel;
@@ -29,6 +29,3 @@ export class PrismaModelRunRepository implements ModelRunRepository {
 		);
 	}
 }
-
-export const modelRunRepository: ModelRunRepository =
-	new PrismaModelRunRepository();

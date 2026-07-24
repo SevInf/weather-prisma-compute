@@ -1,9 +1,9 @@
 import type {
 	ForecastPoint,
-	ForecastSource,
+	ForecastRepository,
 	HourlyBlock,
 	PoiId,
-} from "@/services/forecast-source";
+} from "./forecast-repository";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -11,7 +11,7 @@ type LocationResult = {
 	hourly: HourlyBlock;
 };
 
-export class OpenMeteoForecastRepository implements ForecastSource {
+export class OpenMeteoForecastRepository implements ForecastRepository {
 	#baseUrl: string;
 
 	constructor(baseUrl: string = OPEN_METEO_URL) {
@@ -91,6 +91,3 @@ export class OpenMeteoForecastRepository implements ForecastSource {
 		return url;
 	}
 }
-
-export const openMeteoForecastRepository: ForecastSource =
-	new OpenMeteoForecastRepository();

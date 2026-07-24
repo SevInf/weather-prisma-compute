@@ -1,27 +1,17 @@
-// Read-through cache over an upstream ForecastSource; hourly blocks are cached
-// until the covering model's next run.
-
 import {
 	ForecastCacheWriteError,
-	forecastCacheRepository,
 	type ForecastCacheRepository,
 	type ForecastCacheRow,
 	type ForecastCacheWrite,
-} from "@/repositories/forecast-cache-repository";
-import { openMeteoForecastRepository } from "@/repositories/open-meteo-forecast-repository";
+} from "@/repositories/forecast/forecast-cache-repository";
 import type {
 	ForecastPoint,
-	ForecastSource,
+	ForecastRepository,
 	HourlyBlock,
 	PoiId,
-} from "./forecast-source";
-import {
-	coveringModel,
-	modelClock,
-	type IconModel,
-	type ModelRunClock,
-	type ModelStaleness,
-} from "./model-clock";
+} from "@/repositories/forecast/forecast-repository";
+import type { IconModel } from "@/repositories/model-meta/model-meta-repository";
+import type { ModelRunClock, ModelStaleness } from "./model-clock";
 
 type StaleAtByModel = Map<IconModel, ModelStaleness | null>;
 
@@ -51,14 +41,18 @@ type DecisionStats = {
 	dbHealthy: boolean;
 };
 
-export class CachedForecastSource implements ForecastSource {
+export interface ForecastProvider {
+	hourlyBlocks(points: ForecastPoint[]): Promise<Map<PoiId, HourlyBlock> | null>;
+}
+
+export class ForecastService implements ForecastProvider {
 	#cache: ForecastCacheRepository;
-	#upstream: ForecastSource;
+	#upstream: ForecastRepository;
 	#clock: ModelRunClock;
 
 	constructor(
 		cache: ForecastCacheRepository,
-		upstream: ForecastSource,
+		upstream: ForecastRepository,
 		clock: ModelRunClock,
 	) {
 		this.#cache = cache;
@@ -66,15 +60,12 @@ export class CachedForecastSource implements ForecastSource {
 		this.#clock = clock;
 	}
 
-	/** Fresh row (open run window AND `fetchedAt >= availableAt` AND fetched today UTC)
-	 * serves without upstream fetch. DB failure → direct fetch; upstream failure →
-	 * expired rows; missing entry = unavailable. */
 	async hourlyBlocks(points: ForecastPoint[]): Promise<Map<PoiId, HourlyBlock> | null> {
 		if (points.length === 0) return new Map();
 		const now = new Date();
 
 		const rows = await this.#readCache(points.map((p) => p.id));
-		const modelByPoi = attributeModels(points);
+		const modelByPoi = attributeModels(points, this.#clock);
 		const staleAtByModel = await this.#clock.nextStaleAt(modelByPoi.values());
 		const { fresh, expired, toRefresh } = partitionByFreshness(
 			points,
@@ -143,15 +134,15 @@ function partitionByFreshness(
 	return { fresh, expired, toRefresh: points.filter((p) => !fresh.has(p.id)) };
 }
 
-function attributeModels(points: ForecastPoint[]): Map<PoiId, IconModel> {
+function attributeModels(
+	points: ForecastPoint[],
+	clock: ModelRunClock,
+): Map<PoiId, IconModel> {
 	const modelByPoi = new Map<PoiId, IconModel>();
-	for (const p of points) {
-		modelByPoi.set(p.id, coveringModel(p.latitude, p.longitude));
-	}
+	for (const point of points) modelByPoi.set(point.id, clock.modelFor(point));
 	return modelByPoi;
 }
 
-// Meta null or grace-extended = no new run: expired rows serve under grace (no refetch); rowless POIs still fetch.
 function triageRefresh(
 	toRefresh: ForecastPoint[],
 	modelByPoi: Map<PoiId, IconModel>,
@@ -187,7 +178,6 @@ function planCacheWrites(
 	});
 }
 
-// Best source first: fresh cache → fresh fetch → expired row.
 function assembleServing(
 	points: ForecastPoint[],
 	fresh: Map<PoiId, HourlyBlock>,
@@ -208,7 +198,6 @@ function assembleServing(
 	return { served, expiredFallback };
 }
 
-// One decision line per request cycle.
 function formatDecisionLine(s: DecisionStats): string {
 	if (s.fresh === s.total) return `forecast cache: all ${s.total} fresh`;
 	const parts = [`refreshed ${s.refreshed} of ${s.total} POIs`];
@@ -222,9 +211,6 @@ function formatDecisionLine(s: DecisionStats): string {
 	return `forecast cache: ${parts.join(", ")}`;
 }
 
-// Fresh = clock has a real (non-grace) run window open, the row was fetched
-// from that run (run currency), and same-UTC-day (yesterday's 2-day forecast
-// window may miss tomorrow's sunrise).
 function isFresh(
 	row: ForecastCacheRow,
 	staleness: ModelStaleness | null,
@@ -245,7 +231,6 @@ function isNumberOrNullArray(v: unknown): v is Array<number | null> {
 	return Array.isArray(v) && v.every((x) => x === null || typeof x === "number");
 }
 
-// Malformed cached payload = missing row.
 function parseHourlyBlock(value: unknown): HourlyBlock | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 	const b = value as Record<string, unknown>;
@@ -263,9 +248,3 @@ function parseHourlyBlock(value: unknown): HourlyBlock | null {
 	}
 	return value as HourlyBlock;
 }
-
-export const cachedForecastSource: ForecastSource = new CachedForecastSource(
-	forecastCacheRepository,
-	openMeteoForecastRepository,
-	modelClock,
-);
