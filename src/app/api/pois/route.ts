@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import SunCalc from "suncalc";
 import { db } from "@/prisma/db";
-import { weatherService } from "@/services/weather-service";
+import { weatherService } from "@/composition/weather";
 
 function iso(date: Date): string | null {
 	// SunCalc returns `Invalid Date` for extreme latitudes during polar

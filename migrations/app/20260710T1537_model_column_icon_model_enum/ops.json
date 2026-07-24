@@ -1,0 +1,44 @@
+[
+  {
+    "id": "checkConstraint.poiForecast.poiForecast_model_check",
+    "label": "Add check constraint \"poiForecast_model_check\" on \"poiForecast\".\"model\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "poiForecast_model_check",
+        "table": "poiForecast"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"poiForecast_model_check\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "poiForecast_model_check",
+          "public",
+          "\"public\".\"poiForecast\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"poiForecast_model_check\"",
+        "sql": "ALTER TABLE \"public\".\"poiForecast\" ADD CONSTRAINT \"poiForecast_model_check\" CHECK (\"model\" IN ('dwd_icon_d2', 'dwd_icon_eu', 'dwd_icon'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"poiForecast_model_check\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "poiForecast_model_check",
+          "public",
+          "\"public\".\"poiForecast\""
+        ]
+      }
+    ]
+  }
+]

@@ -6,3 +6,19 @@ src/prisma/start-contract.json linguist-generated
 src/prisma/start-contract.d.ts linguist-generated
 src/prisma/ops.json linguist-generated
 src/prisma/migration.json linguist-generated
+
+# Prisma Next migration packages: planner-generated metadata + pinned contract
+# copies. migration.ts is deliberately NOT marked: it is the human-auditable
+# file in a package (hand-edited dataTransform closures land there).
+migrations/**/migration.json linguist-generated
+migrations/**/ops.json linguist-generated
+migrations/**/start-contract.json linguist-generated
+migrations/**/start-contract.d.ts linguist-generated
+migrations/**/end-contract.json linguist-generated
+migrations/**/end-contract.d.ts linguist-generated
+migrations/app/refs/** linguist-generated
+
+# Tool-generated lockfiles
+bun.lock linguist-generated
+flake.lock linguist-generated
+skills-lock.json linguist-generated

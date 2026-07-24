@@ -4,10 +4,6 @@
   "target": "postgres",
   "profileHash": "sha256:9c8aa3114e84ed3b7ea2bd57526d9c2e1bf7c5292be694e9d3801f566fda7ccb",
   "roots": {
-    "modelRun": {
-      "model": "ModelRun",
-      "namespace": "public"
-    },
     "poi": {
       "model": "Poi",
       "namespace": "public"
@@ -20,83 +16,7 @@
   "domain": {
     "namespaces": {
       "public": {
-        "enum": {
-          "IconModel": {
-            "codecId": "pg/text@1",
-            "members": [
-              {
-                "name": "dwd_icon_d2",
-                "value": "dwd_icon_d2"
-              },
-              {
-                "name": "dwd_icon_eu",
-                "value": "dwd_icon_eu"
-              },
-              {
-                "name": "dwd_icon",
-                "value": "dwd_icon"
-              }
-            ]
-          }
-        },
         "models": {
-          "ModelRun": {
-            "fields": {
-              "availableAt": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/timestamptz@1",
-                  "kind": "scalar"
-                }
-              },
-              "checkedAt": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/timestamptz@1",
-                  "kind": "scalar"
-                }
-              },
-              "model": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/text@1",
-                  "kind": "scalar"
-                },
-                "valueSet": {
-                  "entityKind": "enum",
-                  "entityName": "IconModel",
-                  "namespaceId": "public",
-                  "plane": "domain"
-                }
-              },
-              "updateIntervalSeconds": {
-                "nullable": false,
-                "type": {
-                  "codecId": "pg/int4@1",
-                  "kind": "scalar"
-                }
-              }
-            },
-            "relations": {},
-            "storage": {
-              "fields": {
-                "availableAt": {
-                  "column": "availableAt"
-                },
-                "checkedAt": {
-                  "column": "checkedAt"
-                },
-                "model": {
-                  "column": "model"
-                },
-                "updateIntervalSeconds": {
-                  "column": "updateIntervalSeconds"
-                }
-              },
-              "namespaceId": "public",
-              "table": "modelRun"
-            }
-          },
           "Poi": {
             "fields": {
               "createdAt": {
@@ -189,18 +109,19 @@
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
-                },
-                "valueSet": {
-                  "entityKind": "enum",
-                  "entityName": "IconModel",
-                  "namespaceId": "public",
-                  "plane": "domain"
                 }
               },
               "poiId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "staleAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz@1",
                   "kind": "scalar"
                 }
               }
@@ -235,6 +156,9 @@
                 },
                 "poiId": {
                   "column": "poiId"
+                },
+                "staleAt": {
+                  "column": "staleAt"
                 }
               },
               "namespaceId": "public",
@@ -250,56 +174,6 @@
       "public": {
         "entries": {
           "table": {
-            "modelRun": {
-              "checks": [
-                {
-                  "column": "model",
-                  "name": "modelRun_model_check",
-                  "valueSet": {
-                    "entityKind": "valueSet",
-                    "entityName": "IconModel",
-                    "namespaceId": "public",
-                    "plane": "storage"
-                  }
-                }
-              ],
-              "columns": {
-                "availableAt": {
-                  "codecId": "pg/timestamptz@1",
-                  "nativeType": "timestamptz",
-                  "nullable": false
-                },
-                "checkedAt": {
-                  "codecId": "pg/timestamptz@1",
-                  "nativeType": "timestamptz",
-                  "nullable": false
-                },
-                "model": {
-                  "codecId": "pg/text@1",
-                  "nativeType": "text",
-                  "nullable": false,
-                  "valueSet": {
-                    "entityKind": "valueSet",
-                    "entityName": "IconModel",
-                    "namespaceId": "public",
-                    "plane": "storage"
-                  }
-                },
-                "updateIntervalSeconds": {
-                  "codecId": "pg/int4@1",
-                  "nativeType": "int4",
-                  "nullable": false
-                }
-              },
-              "foreignKeys": [],
-              "indexes": [],
-              "primaryKey": {
-                "columns": [
-                  "model"
-                ]
-              },
-              "uniques": []
-            },
             "poi": {
               "columns": {
                 "createdAt": {
@@ -351,18 +225,6 @@
               "uniques": []
             },
             "poiForecast": {
-              "checks": [
-                {
-                  "column": "model",
-                  "name": "poiForecast_model_check",
-                  "valueSet": {
-                    "entityKind": "valueSet",
-                    "entityName": "IconModel",
-                    "namespaceId": "public",
-                    "plane": "storage"
-                  }
-                }
-              ],
               "columns": {
                 "fetchedAt": {
                   "codecId": "pg/timestamptz@1",
@@ -377,17 +239,16 @@
                 "model": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false,
-                  "valueSet": {
-                    "entityKind": "valueSet",
-                    "entityName": "IconModel",
-                    "namespaceId": "public",
-                    "plane": "storage"
-                  }
+                  "nullable": false
                 },
                 "poiId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
+                  "nullable": false
+                },
+                "staleAt": {
+                  "codecId": "pg/timestamptz@1",
+                  "nativeType": "timestamptz",
                   "nullable": false
                 }
               },
@@ -420,23 +281,13 @@
               },
               "uniques": []
             }
-          },
-          "valueSet": {
-            "IconModel": {
-              "kind": "valueSet",
-              "values": [
-                "dwd_icon_d2",
-                "dwd_icon_eu",
-                "dwd_icon"
-              ]
-            }
           }
         },
         "id": "public",
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "sha256:8cdd9fa423bf6f78bfcf8f95129725ce07ce2f3289f216c5289214a1ae7e3cbe"
+    "storageHash": "sha256:6db32dad783ebe8c5fe3b4002e502e8cac6ab10cc4b8dc4142c035372063be2a"
   },
   "execution": {
     "executionHash": "sha256:a81c880a30767326a86d331ce36566e1fc143e0a917406d2311c1c868356c441",

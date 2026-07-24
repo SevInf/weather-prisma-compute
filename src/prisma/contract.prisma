@@ -8,3 +8,28 @@ model Poi {
   createdAt DateTime @default(now())
   updatedAt temporal.updatedAt()
 }
+
+enum IconModel {
+  dwd_icon_d2
+  dwd_icon_eu
+  dwd_icon
+
+  @@type("pg/text@1")
+}
+
+// Per-POI forecast cache; refreshed when the covering ICON model publishes a new run.
+model PoiForecast {
+  poiId     Int       @id
+  poi       Poi       @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  model     IconModel
+  hourly    Json
+  fetchedAt DateTime // drives run-currency + UTC-day-rollover invalidation
+}
+
+// Per-model run clock; one row per ICON model.
+model ModelRun {
+  model                 IconModel @id
+  availableAt           DateTime // last run's availability instant
+  updateIntervalSeconds Int
+  checkedAt             DateTime // last upstream meta consult (late-run throttle)
+}
