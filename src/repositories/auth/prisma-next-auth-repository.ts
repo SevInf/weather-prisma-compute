@@ -3,11 +3,9 @@ import type { CleanedWhere } from "@better-auth/core/db/adapter";
 import { and, not, or } from "@prisma-next/sql-orm-client";
 import { db } from "@/prisma/db";
 
-// BetterAuth database adapter backed by the Prisma Next client. BetterAuth
-// hands us lowercase model names and cleaned where-clauses; we translate them
-// onto the contract's ORM collections. The factory layer above us owns id
-// generation, field mapping, and output shaping (including `select` trimming),
-// so the operations below always return full rows.
+// Raw BetterAuth persistence boundary backed by Prisma Next. BetterAuth hands
+// us dynamic model names and predicates; this repository translates them to
+// contract ORM queries. The adapter factory owns ids and output shaping.
 
 const MODEL_MAP = {
 	user: "User",
@@ -109,7 +107,7 @@ function applyWhere(base: AnyCollection, where: CleanedWhere[]): AnyCollection {
 	});
 }
 
-export const prismaNextAdapter = createAdapterFactory({
+export const createPrismaNextAuthRepository = () => createAdapterFactory({
 	config: {
 		adapterId: "prisma-next",
 		adapterName: "Prisma Next Adapter",
