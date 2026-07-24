@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import SunCalc from "suncalc";
-import { db } from "@/prisma/db";
+import { auth } from "@/composition/auth";
+import { poiService } from "@/composition/poi";
 import { weatherService } from "@/composition/weather";
+import { userId } from "@/repositories/auth/auth-identifiers";
 
 function iso(date: Date): string | null {
 	// SunCalc returns `Invalid Date` for extreme latitudes during polar
@@ -65,15 +67,13 @@ function sunTimesFor(latitude: number, longitude: number, now: Date) {
 // Pois are mutable per-request; never prerender or cache this endpoint.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-	const pois = await db.orm.public.Poi.select(
-		"id",
-		"name",
-		"latitude",
-		"longitude",
-	)
-		.orderBy((p) => p.id.desc())
-		.all();
+export async function GET(req: Request) {
+	const session = await auth.api.getSession({ headers: req.headers });
+	if (!session) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
+	const pois = await poiService.list(userId(session.user.id));
 
 	const now = new Date();
 	const withSun = pois.map((p) => {
@@ -109,6 +109,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+	const session = await auth.api.getSession({ headers: req.headers });
+	if (!session) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
 	let body: unknown;
 	try {
 		body = await req.json();
@@ -150,11 +155,10 @@ export async function POST(req: Request) {
 		);
 	}
 
-	const poi = await db.orm.public.Poi.select(
-		"id",
-		"name",
-		"latitude",
-		"longitude",
-	).create({ name: name.trim(), latitude, longitude });
+	const poi = await poiService.create(userId(session.user.id), {
+		name: name.trim(),
+		latitude,
+		longitude,
+	});
 	return NextResponse.json(poi, { status: 201 });
 }

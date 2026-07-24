@@ -9,6 +9,10 @@ import { createPrismaNextAuthRepository } from "@/repositories/auth/prisma-next-
 const createAuth = () => {
 	const authRepository = createPrismaNextAuthRepository();
 	return betterAuth({
+		baseURL: {
+			allowedHosts: ["*.prisma.build", "localhost:*"],
+			protocol: "auto",
+		},
 		database: authRepository,
 		emailAndPassword: {
 			enabled: true,

@@ -8,8 +8,8 @@ import type {
 	ForecastPoint,
 	ForecastRepository,
 	HourlyBlock,
-	PoiId,
 } from "@/repositories/forecast/forecast-repository";
+import type { PoiId } from "@/repositories/poi/poi-repository";
 import type { IconModel } from "@/repositories/model-meta/model-meta-repository";
 import type { ModelRunClock, ModelStaleness } from "./model-clock";
 

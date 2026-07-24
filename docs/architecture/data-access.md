@@ -29,6 +29,8 @@ A repository is a narrow boundary around one database, API, or cache-store contr
 
 A repository must not choose a domain strategy, combine facts from separate domains, or decide a user-visible fallback.
 
+Repository and service boundaries must use entity-specific branded identifier types rather than bare `string` or `number` IDs. See [Entity identifiers](entity-identifiers.md).
+
 Group repository files by domain. Name direct providers after their provider and domain. Name cache implementations after the datum they cache, using the `*-cache-repository` suffix.
 
 ## Cache placement
