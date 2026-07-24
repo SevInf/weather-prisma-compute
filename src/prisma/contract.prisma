@@ -7,6 +7,10 @@ model Poi {
   longitude Float
   createdAt DateTime @default(now())
   updatedAt temporal.updatedAt()
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 
