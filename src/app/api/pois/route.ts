@@ -3,6 +3,7 @@ import SunCalc from "suncalc";
 import { auth } from "@/composition/auth";
 import { poiService } from "@/composition/poi";
 import { weatherService } from "@/composition/weather";
+import { userId } from "@/repositories/poi/poi-repository";
 
 function iso(date: Date): string | null {
 	// SunCalc returns `Invalid Date` for extreme latitudes during polar
@@ -72,7 +73,7 @@ export async function GET(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const pois = await poiService.list(session.user.id);
+	const pois = await poiService.list(userId(session.user.id));
 
 	const now = new Date();
 	const withSun = pois.map((p) => {
@@ -154,7 +155,7 @@ export async function POST(req: Request) {
 		);
 	}
 
-	const poi = await poiService.create(session.user.id, {
+	const poi = await poiService.create(userId(session.user.id), {
 		name: name.trim(),
 		latitude,
 		longitude,
