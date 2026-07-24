@@ -24,7 +24,4 @@
 ## Known constraints & gaps
 
 - `drive/calibration/dod.md` does not exist; there is no team-DoD floor to inherit. Project specs state their complete DoD explicitly.
-
-## References
-
-- `projects/poi-forecast-cache/` — first project run in this repo; pattern-match against its spec/plan shape.
+- **2026-07-24 — final retro, `poi-forecast-cache`:** Give every worktree its own development database, or coordinate before running schema reconciliation. Prisma Next's `db update` reconciles the database to the current contract and can remove sibling-worktree tables.

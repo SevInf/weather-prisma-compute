@@ -16,7 +16,3 @@
 ## Known constraints & gaps
 
 - None recorded yet.
-
-## References
-
-- `projects/poi-forecast-cache/spec.md` — first project spec in this repo; pattern-match against its shape.

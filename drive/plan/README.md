@@ -17,10 +17,10 @@
 
 - Single-operator repo; parallel groups are still welcome but there is no multi-agent lane convention yet.
 
+## Planning lessons
+
+- **2026-07-24 — final retro, `poi-forecast-cache`:** When a refactor is motivated by readability, state the required method-level shape in the slice plan (for example, a small effectful shell plus named pure decision functions). A layering or class-extraction plan alone can move an unreadable policy method without improving it.
+
 ## Known constraints & gaps
 
 - Dev environment is nix-based: shell commands needing project tooling must run via `nix develop -c <cmd>` (plain `bun` is not on PATH).
-
-## References
-
-- `projects/poi-forecast-cache/plan.md` — first plan authored in this repo (once it lands).
