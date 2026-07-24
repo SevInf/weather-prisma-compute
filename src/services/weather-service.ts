@@ -10,11 +10,12 @@
 //   Meteorol. Climatol., 46(8): 1141–1168). We model probability as a
 //   quadratic falloff cutting off at 4°C.
 
-import { poiId, type HourlyBlock } from "@/repositories/forecast/forecast-repository";
+import type { HourlyBlock } from "@/repositories/forecast/forecast-repository";
+import type { PoiId } from "@/repositories/poi/poi-repository";
 import type { ForecastProvider } from "./forecast-service";
 
 export type ForecastInput = {
-	id: number;
+	id: PoiId;
 	latitude: number;
 	longitude: number;
 	// One fog probability is computed per target timestamp. Pass as many as
@@ -67,13 +68,13 @@ export class WeatherService {
 	}
 
 	/** Missing entry = forecast unavailable; callers degrade, not fail. */
-	async getForecasts(pois: ForecastInput[]): Promise<Map<number, PoiForecast>> {
-		const out = new Map<number, PoiForecast>();
+	async getForecasts(pois: ForecastInput[]): Promise<Map<PoiId, PoiForecast>> {
+		const out = new Map<PoiId, PoiForecast>();
 		if (pois.length === 0) return out;
 
 		const blocks = await this.#source.hourlyBlocks(
 			pois.map((p) => ({
-				id: poiId(p.id),
+				id: p.id,
 				latitude: p.latitude,
 				longitude: p.longitude,
 			})),
@@ -81,7 +82,7 @@ export class WeatherService {
 		if (!blocks) return out;
 
 		for (const p of pois) {
-			const hourly = blocks.get(poiId(p.id));
+			const hourly = blocks.get(p.id);
 			if (!hourly) continue;
 			out.set(p.id, summarize(hourly, p));
 		}

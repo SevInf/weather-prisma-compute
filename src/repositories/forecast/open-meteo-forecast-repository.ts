@@ -2,8 +2,8 @@ import type {
 	ForecastPoint,
 	ForecastRepository,
 	HourlyBlock,
-	PoiId,
 } from "./forecast-repository";
+import type { PoiId } from "@/repositories/poi/poi-repository";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 

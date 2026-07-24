@@ -1,9 +1,5 @@
-declare const poiIdBrand: unique symbol;
-export type PoiId = number & { readonly [poiIdBrand]: true };
+import type { PoiId } from "@/repositories/poi/poi-repository";
 
-export function poiId(id: number): PoiId {
-	return id as PoiId;
-}
 
 export type ForecastPoint = {
 	id: PoiId;

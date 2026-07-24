@@ -142,6 +142,17 @@ and assert that parsing returns the branded application value. Do not use broad
 type assertions (`as any`) to bypass identifier incompatibility; a type error
 usually indicates the exact class of entity mix-up the brand exists to prevent.
 
+## External framework boundaries
+
+A third-party interface may require opaque primitive IDs or dynamic records. Keep
+that representation inside the integration adapter. The exception applies only
+while the identifier remains governed by the third-party contract; brand it as
+soon as it enters an application-owned repository or service interface.
+
+Do not add unused ceremonial brands for third-party entities that never cross an
+application boundary. If application code begins referencing such an entity,
+introduce its brand at that boundary before exposing it.
+
 ## Review checklist
 
 When adding or changing an entity:

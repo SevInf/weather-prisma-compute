@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/composition/auth";
 import { poiService } from "@/composition/poi";
-import { userId } from "@/repositories/poi/poi-repository";
+import { userId } from "@/repositories/auth/auth-identifiers";
+import { poiId } from "@/repositories/poi/poi-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function DELETE(
 		);
 	}
 
-	const deleted = await poiService.delete(id, userId(session.user.id));
+	const deleted = await poiService.delete(poiId(id), userId(session.user.id));
 	if (!deleted) {
 		return NextResponse.json({ error: "Not found" }, { status: 404 });
 	}

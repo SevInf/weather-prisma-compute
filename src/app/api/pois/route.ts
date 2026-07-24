@@ -3,7 +3,7 @@ import SunCalc from "suncalc";
 import { auth } from "@/composition/auth";
 import { poiService } from "@/composition/poi";
 import { weatherService } from "@/composition/weather";
-import { userId } from "@/repositories/poi/poi-repository";
+import { userId } from "@/repositories/auth/auth-identifiers";
 
 function iso(date: Date): string | null {
 	// SunCalc returns `Invalid Date` for extreme latitudes during polar

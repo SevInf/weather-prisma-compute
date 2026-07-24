@@ -1,14 +1,15 @@
 import { db } from "@/prisma/db";
+import type { UserId } from "@/repositories/auth/auth-identifiers";
 
-declare const userIdBrand: unique symbol;
-export type UserId = string & { readonly [userIdBrand]: true };
+declare const poiIdBrand: unique symbol;
+export type PoiId = number & { readonly [poiIdBrand]: true };
 
-export function userId(id: string): UserId {
-	return id as UserId;
+export function poiId(id: number): PoiId {
+	return id as PoiId;
 }
 
 export type Poi = {
-	id: number;
+	id: PoiId;
 	name: string;
 	latitude: number;
 	longitude: number;
@@ -23,12 +24,12 @@ export type CreatePoi = {
 export interface PoiRepository {
 	listByOwner(userId: UserId): Promise<Poi[]>;
 	createForOwner(userId: UserId, input: CreatePoi): Promise<Poi>;
-	deleteByOwner(id: number, userId: UserId): Promise<boolean>;
+	deleteByOwner(id: PoiId, userId: UserId): Promise<boolean>;
 }
 
 export class PrismaPoiRepository implements PoiRepository {
 	async listByOwner(userId: UserId): Promise<Poi[]> {
-		return await db.orm.public.Poi.select(
+		const rows = await db.orm.public.Poi.select(
 			"id",
 			"name",
 			"latitude",
@@ -37,18 +38,20 @@ export class PrismaPoiRepository implements PoiRepository {
 			.where({ userId })
 			.orderBy((p) => p.id.desc())
 			.all();
-	}
+	return rows.map((row) => ({ ...row, id: poiId(row.id) }));
+}
 
 	async createForOwner(userId: UserId, input: CreatePoi): Promise<Poi> {
-		return await db.orm.public.Poi.select(
+		const row = await db.orm.public.Poi.select(
 			"id",
 			"name",
 			"latitude",
 			"longitude",
 		).create({ ...input, userId });
+		return { ...row, id: poiId(row.id) };
 	}
 
-	async deleteByOwner(id: number, userId: UserId): Promise<boolean> {
+	async deleteByOwner(id: PoiId, userId: UserId): Promise<boolean> {
 		const deleted = await db.orm.public.Poi.where({ id, userId }).delete();
 		return deleted !== null;
 	}

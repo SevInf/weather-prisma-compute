@@ -1,5 +1,6 @@
 import { db } from "@/prisma/db";
-import { poiId, type HourlyBlock, type PoiId } from "./forecast-repository";
+import type { HourlyBlock } from "./forecast-repository";
+import { poiId, type PoiId } from "@/repositories/poi/poi-repository";
 import type { IconModel } from "../model-meta/model-meta-repository";
 
 // PoiForecast row as the ORM returns it: timestamptz decodes to `Date`, not string.
